@@ -3,7 +3,6 @@
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, TensorDataset
 
 from model import ConditionalAutoencoder
