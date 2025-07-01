@@ -1,4 +1,10 @@
-# 💩 CACCA: Calamita Alexia Con Conditional Autoencoder 💩
+# 💩 CACCA 💩 
+
+Calamita 
+Alexia 
+Con 
+Conditional 
+Autoencoder
 
 Benvenuti nel fantastico progetto CACCA💩! 🧪✨ Questo non è un autoencoder qualsiasi, è un **Conditional Autoencoder** addestrato per generare nuove molecole 🧬 partendo da stringhe SMILES. Il modello impara la struttura delle molecole e può generarne di nuove con proprietà specifiche!
 
