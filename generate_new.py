@@ -29,7 +29,8 @@ def main(args):
 
     # Define model config (must match training)
     class DummyArgs:
-        batch_size = 1
+        emb_size = 256
+        batch_size = 128
         latent_size = args.latent_size
         unit_size = 512
         n_rnn_layer = 3
@@ -70,12 +71,13 @@ def main(args):
 
         z = torch.randn(1, DummyArgs.latent_size).to(device)
         start_token = torch.LongTensor([[char_to_int["X"]]]).to(device)
+        end_token = torch.LongTensor([[char_to_int["E"]]]).to(device).squeeze(dim=0)
 
         # Autoregressive sampling from model
-        generated_tensor = model.sample(z, c, start_token, seq_length=args.seq_length, device=device)
+        generated_tensor = model.sample(z, c, start_token, eos_idx = end_token, seq_length=args.seq_length, device=device)
         smiles = decode_smiles_from_indexes(generated_tensor[0].tolist(), int_to_char)
 
-        mol = Chem.MolFromSmiles(smiles)
+        mol = Chem.MolFromSmiles(smiles.strip('_'))
         if mol:
             calc_logp = Descriptors.MolLogP(mol)
             if args.logP_min <= calc_logp <= args.logP_max:
@@ -113,8 +115,8 @@ parser.add_argument("--HBA_max", type=float, default=10)
 
 parser.add_argument("--TPSA_min", type=float, default=20.0)
 parser.add_argument("--TPSA_max", type=float, default=120.0)
-
-parser.add_argument("--seq_length", type=int, default=50)
+parser.add_argument("--emb_size", type=int, default=256, help="Emb size")
+parser.add_argument("--seq_length", type=int, default=120)
 parser.add_argument("--save_dir", type=str, default="save")
 parser.add_argument("--latent_size", type=int, default=200)
 parser.add_argument("--num_samples", type=int, default=5)

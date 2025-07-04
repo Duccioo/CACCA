@@ -9,7 +9,7 @@ import time
 import argparse
 
 from model_new import ConditionalAutoencoder
-from utils import load_data
+from utils_final import load_data
 
 import torch
 print(torch.__version__)
@@ -62,7 +62,7 @@ def main(args):
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
-    pad_idx = vocab['E']
+    pad_idx = vocab['_']
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
     print(f"Number of parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
@@ -82,7 +82,10 @@ def main(args):
             optimizer.zero_grad()
             _, logits, _ = model(x, c, l)
 
+            
             loss = criterion(logits.view(-1, vocab_size), y.view(-1))
+            # loss_prop = F.mse_loss(prop_pred, c)  
+            # loss = loss_rec + loss
             loss.backward()
             optimizer.step()
             train_losses.append(loss.item())
@@ -106,13 +109,14 @@ def main(args):
         print(f"{epoch}\t{train_loss:.4f}\t{test_loss:.4f}\t{end - start:.2f}")
 
         # Save model checkpoint
-        model_path = os.path.join(args.save_dir, f"2model_{epoch}.pt")
+        model_path = os.path.join(args.save_dir, f"model_{epoch}.pt")
         model.module.save(model_path)
 
         #model.save(model_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--emb_size", type=int, default=256, help="Emb size")
     parser.add_argument("--batch_size", type=int, default=128, help="Batch size")
     parser.add_argument("--latent_size", type=int, default=200, help="Latent vector size")
     parser.add_argument("--unit_size", type=int, default=512, help="Size of RNN units")
