@@ -43,8 +43,8 @@ print(f'oestradiol', cal_prop(Oestradiol))
 print(f'indomethacin', cal_prop(Indomethacin))
 
 
-# pol = '*CCC[Fe]CCCC(=O)OCCCCOCCCNCC(*)=O'
-# print(cal_prop(pol))
+pol = 'OCCN(C(=O)C(c1ccccc1)c1ccccc1)'
+print(cal_prop(pol))
 
 # smiles2chemdraw.py
 from pathlib import Path

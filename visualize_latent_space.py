@@ -269,6 +269,8 @@ def parse_cli() -> argparse.Namespace:
             args.smiles = [l.strip() for l in f if l.strip()]
     else:
         args.smiles = [  # quick demo list
+            'CCN(CC)CCNC(=O)C1=CC(=C(C=C1OC)N)Cl', #Metoclopramide
+            'CC1=C(C2=C(N1C(=O)C3=CC=C(C=C3)Cl)C=CC(=C2)OC)CC(=O)O', #Indomethacin
             "CC(=O)OC1=CC=CC=C1C(=O)O", # Aspirin
             "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",                # Ibuprofen
             "c1ccccc1",                      # Benzene
@@ -284,6 +286,7 @@ def parse_cli() -> argparse.Namespace:
             "CC1=NC=C(C=C1)C2=C(C=C(C=N2)Cl)C3=CC=C(C=C3)S(=O)(=O)C",
             "CS(=O)(=O)NC1=C(C=C(C=C1)[N+](=O)[O-])OC2=CC=CC=C2",
             "C1=CC=C(C(=C1)CC(=O)O)NC2=C(C=CC=C2Cl)Cl",
+            
 
             #"C1=CC=C(C=C1)CC2=CC=CC=C2", 
            # "c1ccccc1C1NC=CO1", 
