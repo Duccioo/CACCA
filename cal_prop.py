@@ -10,6 +10,7 @@ import argparse
 import csv
 import multiprocessing as mp
 from pathlib import Path
+import numpy as np
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -29,7 +30,35 @@ def calc_props(smiles: str):
     )
 
 
-def read_smiles(path: Path, smiles_column: str | None) -> list[str]:
+def scale_props_list(props_list: list[tuple[float, ...]],
+                     method: str = "zscore"
+                     ) -> list[tuple[float, ...]]:
+    """
+    Esegue lo scaling col metodo scelto su una lista di tuple numeriche.
+    `method` può essere:
+      • 'zscore'  → (x - μ) / σ
+      • 'minmax'  → (x - x_min) / (x_max - x_min)
+    Ritorna una nuova lista di tuple scalate.
+    """
+    if method not in {"zscore", "minmax"}:
+        raise ValueError("method deve essere 'zscore' oppure 'minmax'")
+
+    arr = np.asarray(props_list, dtype=float)          # shape (n_mol, n_prop)
+    if method == "zscore":
+        mean = arr.mean(axis=0)
+        std  = arr.std(axis=0, ddof=0)
+        std[std == 0] = 1.0                            # evita div/0 su colonne costanti
+        scaled = (arr - mean) / std
+    else:  # minmax
+        min_ = arr.min(axis=0)
+        range_ = arr.max(axis=0) - min_
+        range_[range_ == 0] = 1.0                      # evita div/0
+        scaled = (arr - min_) / range_
+
+    return [tuple(row) for row in scaled]
+
+
+def read_smiles(path: Path, smiles_column: str = None) -> list[str]:
     """Legge SMILES da .txt (uno per riga) oppure da .csv."""
     if path.suffix.lower() == ".csv":
         if smiles_column is None:
@@ -46,13 +75,24 @@ def main(args):
     in_path  = Path(args.input_filename)
     out_path = Path(args.output_filename)
 
-    smiles_list = read_smiles(in_path, args.smiles_column)
+    smiles_list = read_smiles(in_path)
     print(f"📄  Letti {len(smiles_list)} SMILES da {in_path.name}")
 
     # Pool parallelo
     ncpu = max(1, args.ncpus)
     with mp.Pool(ncpu) as pool:
-        results = pool.map(calc_props, smiles_list)
+        results_raw = pool.map(calc_props, smiles_list)
+        # Filtro i risultati validi
+        results_raw = [r for r in results_raw if r is not None]
+
+        props_only = [r[1:] for r in results_raw if r is not None]   # MW, logP, HBD, HBA, TPSA
+        props_scaled = scale_props_list(props_only, method="zscore")
+
+    results = [
+            (row_raw[0],) + row_scaled                               # (SMILES, 5 scalati)
+            for row_raw, row_scaled in zip(results_raw, props_scaled) if row_raw[0] is not None
+        ]
+
 
     # Scrittura
     with out_path.open("w", newline="") as f:
@@ -71,13 +111,11 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calcola proprietà RDKit da SMILES")
 
-    parser.add_argument("--input_filename",  type=str, default="smiles.txt",
+    parser.add_argument("--input_filename",  type=str, default="smiles_original.txt",
                         help="File .txt (uno SMILES per riga) oppure .csv")
     parser.add_argument("--output_filename", type=str, default="smiles_prop.txt",
                         help="File TSV di output")
-    parser.add_argument("--smiles_column",   type=str, default=None,
-                        help="Nome colonna SMILES se l'input è un CSV")
-    parser.add_argument("--ncpus", type=int, default=1,
+    parser.add_argument("--ncpus", type=int, default=44,
                         help="Numero di CPU da usare (default 1)")
 
     main(parser.parse_args())

@@ -52,9 +52,9 @@ class ConditionalAutoencoder(nn.Module):
             hidden_size = self.unit_size,
             num_layers = self.n_layers,
             batch_first = True,
-            bidirectional = False
+            bidirectional = True
         )
-        self.output_linear = nn.Linear(self.unit_size, vocab_size)
+        self.output_linear = nn.Linear(2*self.unit_size, vocab_size)
 
         # Inizializzazione xavier per stabilità
         for m in self.modules():

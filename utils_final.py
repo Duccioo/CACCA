@@ -149,6 +149,9 @@ def load_data(path, seq_length):
     smiles_output = np.array([[vocab[ch] for ch in s] for s in smiles_output], dtype=np.int64)
 
     # ── Carica le proprietà (float32) ────────────────────────────
+    for l in lines:
+        if len(l) != 6:
+            print('diolupo')
     prop = np.array([l[1:] for l in lines], dtype=np.float32)
 
     return smiles_input, smiles_output, chars, vocab, prop, length
