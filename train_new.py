@@ -124,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("--seq_length", type=int, default=120, help="Maximum SMILES sequence length")
     parser.add_argument("--num_prop", type=int, default=5, help="Number of conditional properties")
     parser.add_argument("--prop_file", type=str, required=True, help="Path to SMILES+properties .txt file")
-    parser.add_argument("--num_epochs", type=int, default=50, help="Number of training epochs")
+    parser.add_argument("--num_epochs", type=int, default=100, help="Number of training epochs")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--save_dir", type=str, default="save", help="Directory to save checkpoints")
     args = parser.parse_args()

@@ -49,6 +49,10 @@ def scale_props_list(props_list: list[tuple[float, ...]],
         std  = arr.std(axis=0, ddof=0)
         std[std == 0] = 1.0                            # evita div/0 su colonne costanti
         scaled = (arr - mean) / std
+
+
+        print(f'Mean and sigma {mean},  {std}')
+
     else:  # minmax
         min_ = arr.min(axis=0)
         range_ = arr.max(axis=0) - min_
@@ -113,7 +117,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--input_filename",  type=str, default="smiles_original.txt",
                         help="File .txt (uno SMILES per riga) oppure .csv")
-    parser.add_argument("--output_filename", type=str, default="smiles_prop.txt",
+    parser.add_argument("--output_filename", type=str, default="ZINC_smiles_prop.txt",
                         help="File TSV di output")
     parser.add_argument("--ncpus", type=int, default=44,
                         help="Numero di CPU da usare (default 1)")

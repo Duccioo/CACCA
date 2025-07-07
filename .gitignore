@@ -1,2 +1,8 @@
 save_old
 save
+save_no_scaled
+save_scaled_50
+*.csv
+*.png
+*.txt
+*.html

@@ -1,0 +1,5 @@
+📄  Letti 500006 SMILES da smiles_original.txt
+[17:50:05] Explicit valence for atom # 14 N, 4, is greater than permitted
+[17:50:07] Explicit valence for atom # 13 N, 4, is greater than permitted
+Mean and sigma [330.83067929   3.08029442   0.99482004   4.15394077  64.32489958],  [68.58793322  1.3349934   0.80812124  1.65984879 23.59095824]
+✅  Salvate 500004 molecole valide in ZINC_smiles_prop.txt

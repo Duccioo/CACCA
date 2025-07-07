@@ -169,8 +169,17 @@ def run(args: argparse.Namespace) -> None:
     x, c, l, logp_vals, valid_smiles = smiles_to_tensor(args.smiles, vocab, args.seq_length)
     x, c, l = x.to(device), c.to(device), l.to(device)
 
+
+
+    # mean = [330.83067929, 3.08029442, 0.99482004, 4.15394077, 64.32489958]
+    # std = [68.58793322 ,1.3349934 , 0.80812124, 1.65984879 , 23.59095824]
+    # std[std == 0] = 1.0                            # evita div/0 su colonne costanti
+    # c_scaled = (c - torch.Tensor(mean).to(device)) / torch.Tensor(std).to(device)
+
     with torch.no_grad():
         # forward() returns (z, logits, dec_out)
+        #c = torch.zeros([x.shape[0], c.shape[1]], device=device)
+        x = torch.zeros_like(x, device=device)
         latent = model(x, c, l)[0].cpu().numpy()
         print(f"[INFO] Encoded {latent.shape[0]} molecules → latent_dim={latent.shape[1]}")
 
@@ -184,12 +193,17 @@ def run(args: argparse.Namespace) -> None:
             print(f"[INFO] Reference SMILES found at index {ref_index}")
         except ValueError:
             raise ValueError(f"Reference SMILES '{args.ref_smiles}' not found in the input list.")
+        
+        VI = np.linalg.inv(np.cov(latent, rowvar=False))
 
         print("[INFO] Computing distances from reference embedding …")
         dists = {
             "euclidean": [distance.euclidean(ref_embedding, z) for z in latent],
             "cosine": [distance.cosine(ref_embedding, z) for z in latent],
             "manhattan": [distance.cityblock(ref_embedding, z) for z in latent],
+            "correlation": [distance.correlation(ref_embedding, z) for z in latent],
+            "mahalanobis": [distance.mahalanobis(ref_embedding, z, VI) for z in latent],
+            "chebyshev": [distance.chebyshev(ref_embedding, z) for z in latent]
         }
 
         df = pd.DataFrame({
@@ -197,10 +211,14 @@ def run(args: argparse.Namespace) -> None:
             "logP": logp_vals,
             "euclidean": dists["euclidean"],
             "cosine": dists["cosine"],
-            "manhattan": dists["manhattan"]
+            "manhattan": dists["manhattan"],
+            "correlation": dists["correlation"],
+            "mahalanobis": dists["mahalanobis"],
+            "chebyshev": dists["chebyshev"]
+
         })
         out_csv = Path(args.out).with_suffix(".csv")
-        df.to_csv(out_csv, index=False)
+        df.to_csv(out_csv, index=False, sep=';')
         print(f"[INFO] Distance table saved to {out_csv.as_posix()}")
 
 
@@ -241,11 +259,11 @@ def run(args: argparse.Namespace) -> None:
 def parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Visualise the latent space of a ConditionalAutoencoder")
 
-    parser.add_argument("--save_dir", type=str, default="save", help="Directory containing model_*.pt checkpoints")
+    parser.add_argument("--save_dir", type=str, default="save_no_scaled", help="Directory containing model_*.pt checkpoints")
     parser.add_argument("--seq_length", type=int, default=120, help="Maximum sequence length used during training")
 
     parser.add_argument("--smiles_file", type=str, default=None, help="Plain‑text file with one SMILES per line (overrides the built‑in list)")
-    parser.add_argument("--vocab_file", type=str, default="save", help="NumPy .npy file with the vocabulary used during training")
+    parser.add_argument("--vocab_file", type=str, default="save_no_scaled", help="NumPy .npy file with the vocabulary used during training")
 
     parser.add_argument("--latent_size", type=int, default=200)
     parser.add_argument("--unit_size", type=int, default=512)
@@ -256,7 +274,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument("--min_dist", type=float, default=0.3, help="UMAP min_dist parameter")
 
     parser.add_argument("--annotate", action="store_true", help="Draw the SMILES string next to every point")
-    parser.add_argument("--out", type=str, default="latent_space_umap.png", help="Output image filename")
+    parser.add_argument("--out", type=str, default="latent_space_umap_no_smiles_dist_pol2.png", help="Output image filename")
     parser.add_argument("--ref_smiles", type=str, default="OCCN(C(=O)C(c1ccccc1)c1ccccc1)", help="SMILES string to use as reference for distance computation")
 
     args = parser.parse_args()
