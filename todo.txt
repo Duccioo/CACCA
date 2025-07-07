@@ -1,7 +1,0 @@
-3.1 Standardizza sempre i descrittori
-Z-score o MinMax su logP, MolWt, HBD, HBA, TPSA prima di concatenarli a z.
-
-Riduci così il rischio che un unico descrittore domini la L1.
-
-3.2 Prova la distanza Mahalanobis
-Tiene conto di varianze e covarianze, per cui differenze su dimensioni correlate (es. MolWt ↔ TPSA) non vengono sommate due volte
