@@ -61,4 +61,4 @@ Ecco una rapida occhiata ai file principali:
 
 ---
 
-Buona CACCA 💩! 🥳 Spero ti piaccia!
+Buona CACCA 💩!
