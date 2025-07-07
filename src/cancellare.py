@@ -3,9 +3,11 @@ import os
 import torch
 from utils_final import load_data
 import numpy as np
-from model_new import ConditionalAutoencoder
 
-save_dir = '/mnt/beegfs/home/giulio/calamita/save'
+# ---
+from model.CAE import ConditionalAutoencoder
+
+save_dir = "/mnt/beegfs/home/giulio/calamita/save"
 vocab_path = os.path.join(save_dir, "vocab.pkl")
 with open(vocab_path, "rb") as f:
     vocab_data = pickle.load(f)
@@ -17,7 +19,6 @@ int_to_char = {i: c for c, i in vocab.items()}
 
 print(char)
 print(vocab)
-
 
 
 # save_dir = '/mnt/beegfs/home/giulio/calamita/save'
@@ -34,9 +35,7 @@ print(vocab)
 # print(vocab2)
 
 
-
-
-prop_file = '/mnt/beegfs/home/giulio/calamita/smiles_prop.txt'
+prop_file = "/mnt/beegfs/home/giulio/calamita/smiles_prop.txt"
 molecules_input, molecules_output, char, vocab, labels, length = load_data(prop_file, 120)
 vocab_size = len(char)
 print(f"Vocabulary size: {vocab_size}")
@@ -47,7 +46,7 @@ num_total = len(molecules_input)
 num_train = int(num_total * 0.75)
 
 
-labels=labels.astype(np.float32)
+labels = labels.astype(np.float32)
 train_x = torch.LongTensor(molecules_input[:num_train])
 train_y = torch.LongTensor(molecules_output[:num_train])
 train_c = torch.FloatTensor(labels[:num_train])
@@ -62,15 +61,15 @@ test_l = torch.LongTensor(length[num_train:])
 from torch.utils.data import DataLoader, TensorDataset
 
 batch_size = 128
-train_loader = DataLoader(TensorDataset(train_x, train_y, train_c, train_l),
-                              batch_size=batch_size, shuffle=True)
-test_loader = DataLoader(TensorDataset(test_x, test_y, test_c, test_l),
-                             batch_size=batch_size, shuffle=False)
+train_loader = DataLoader(
+    TensorDataset(train_x, train_y, train_c, train_l), batch_size=batch_size, shuffle=True
+)
+test_loader = DataLoader(TensorDataset(test_x, test_y, test_c, test_l), batch_size=batch_size, shuffle=False)
 
 import argparse
 
 args = argparse.Namespace(
-    emb_size = 256,
+    emb_size=256,
     batch_size=128,
     latent_size=512,
     unit_size=512,
@@ -80,11 +79,11 @@ args = argparse.Namespace(
 )
 
 # Ora puoi usarlo come nel training script:
-model = ConditionalAutoencoder(vocab_size, args).to('cuda')
+model = ConditionalAutoencoder(vocab_size, args).to("cuda")
 
 
 dato = next(iter(train_loader))
-model(dato[0].to('cuda'), dato[2].to('cuda'), dato[3].to('cuda'))
+model(dato[0].to("cuda"), dato[2].to("cuda"), dato[3].to("cuda"))
 
 
 # with open("molecole.smi", "r") as f:

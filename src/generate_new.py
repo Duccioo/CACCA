@@ -6,7 +6,9 @@ import pickle
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
-from model_new import ConditionalAutoencoder
+
+# ---
+from model.CAE import ConditionalAutoencoder
 from utils import decode_smiles_from_indexes
 
 
@@ -60,10 +62,10 @@ def main(args):
         # Generate random conditional vector
         target_logP = np.random.uniform(args.logP_min, args.logP_max)
         target_MolWt = np.random.uniform(args.MolWt_min, args.MolWt_max)
-        target_logP  = np.random.uniform(args.logP_min, args.logP_max)
-        target_HBD   = np.random.randint(args.HBD_min, args.HBD_max + 1)
-        target_HBA   = np.random.randint(args.HBA_min, args.HBA_max + 1)
-        target_TPSA  = np.random.uniform(args.TPSA_min, args.TPSA_max)
+        target_logP = np.random.uniform(args.logP_min, args.logP_max)
+        target_HBD = np.random.randint(args.HBD_min, args.HBD_max + 1)
+        target_HBA = np.random.randint(args.HBA_min, args.HBA_max + 1)
+        target_TPSA = np.random.uniform(args.TPSA_min, args.TPSA_max)
 
         c_vals = [target_MolWt, target_logP, target_HBD, target_HBA, target_TPSA]
 
@@ -74,10 +76,12 @@ def main(args):
         end_token = torch.LongTensor([[char_to_int["E"]]]).to(device).squeeze(dim=0)
 
         # Autoregressive sampling from model
-        generated_tensor = model.sample(z, c, start_token, eos_idx = end_token, seq_length=args.seq_length, device=device)
+        generated_tensor = model.sample(
+            z, c, start_token, eos_idx=end_token, seq_length=args.seq_length, device=device
+        )
         smiles = decode_smiles_from_indexes(generated_tensor[0].tolist(), int_to_char)
 
-        mol = Chem.MolFromSmiles(smiles.strip('_'))
+        mol = Chem.MolFromSmiles(smiles.strip("_"))
         if mol:
             calc_logp = Descriptors.MolLogP(mol)
             if args.logP_min <= calc_logp <= args.logP_max:
@@ -123,4 +127,3 @@ parser.add_argument("--num_samples", type=int, default=5)
 
 args = parser.parse_args()
 main(args)
-

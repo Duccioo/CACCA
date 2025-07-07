@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from model_new import ConditionalAutoencoder
+from model.CAE import ConditionalAutoencoder
 from utils import tokenize_smiles  # la tua funzione di tokenizzazione con PAD/X/E
 
 

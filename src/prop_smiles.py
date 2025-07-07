@@ -1,23 +1,42 @@
+"""
+Questo script utilizza RDKit per calcolare e visualizzare proprietà molecolari a partire da stringhe SMILES.
+Funzionalità principali:
+- Definisce la funzione `cal_prop(s)` che, dato uno SMILES, restituisce una tupla contenente:
+    - SMILES canonico
+    - Peso molecolare esatto (ExactMolWt)
+    - logP (coefficiente di ripartizione ottanolo/acqua, metodo di Crippen)
+    - Numero di donatori di legame a idrogeno (H-bond donors)
+    - Numero di accettori di legame a idrogeno (H-bond acceptors)
+    - Superficie polare topologica (TPSA)
+- Esegue un esempio di calcolo delle proprietà su uno SMILES specifico, stampando i risultati in formato leggibile.
+- Visualizza e salva immagini di diverse molecole rappresentate da SMILES, utilizzando RDKit per la generazione delle immagini.
+- Ripete il calcolo delle proprietà e la stampa dei risultati per alcune molecole di esempio.
+Lo script è utile per analizzare rapidamente le proprietà chimico-fisiche di molecole rappresentate in formato SMILES e per generare le relative immagini molecolari.
+"""
+
 from rdkit.Chem.Descriptors import ExactMolWt
-from rdkit.Chem.Crippen  import MolLogP
+
+from rdkit.Chem.Crippen import MolLogP
 from rdkit.Chem.rdMolDescriptors import CalcNumHBD, CalcNumHBA, CalcTPSA
 from rdkit import Chem
+
 
 def cal_prop(s):
     m = Chem.MolFromSmiles(s)
     if m is None:
         return None
     return (
-        Chem.MolToSmiles(m),          # SMILES canonico
-        ExactMolWt(m),                # Peso molecolare esatto
-        MolLogP(m),                   # logP (Crippen)
-        CalcNumHBD(m),                # H-bond donors
-        CalcNumHBA(m),                # H-bond acceptors
-        CalcTPSA(m)                   # TPSA
+        Chem.MolToSmiles(m),  # SMILES canonico
+        ExactMolWt(m),  # Peso molecolare esatto
+        MolLogP(m),  # logP (Crippen)
+        CalcNumHBD(m),  # H-bond donors
+        CalcNumHBA(m),  # H-bond acceptors
+        CalcTPSA(m),  # TPSA
     )
 
+
 # ---------- ESEMPIO SU UN UNICO SMILES ----------
-smiles = "C[C@]12CC[C@H]3[C@H]([C@@H]1CC[C@@H]2O)CCC4=C3C=CC(=C4)O"          
+smiles = "C[C@]12CC[C@H]3[C@H]([C@@H]1CC[C@@H]2O)CCC4=C3C=CC(=C4)O"
 res = cal_prop(smiles)
 
 if res is not None:
@@ -39,7 +58,7 @@ smi1 = '"c1ccccc1C(c2ccccc2)C3NCCO3"'
 mol = Chem.MolFromSmiles("c1ccccc1C(c2ccccc2)C3NCCO3")
 Draw.MolToImage(mol)
 img = Draw.MolToImage(mol, size=(400, 300))
-#img.save("polyphox_monomer.png")
+# img.save("polyphox_monomer.png")
 
 res = cal_prop(smiles)
 
@@ -55,28 +74,27 @@ else:
     print("SMILES non valido")
 
 
-
 mol2 = Chem.MolFromSmiles("c1ccc(C(c2ccccc2)C2NCCO2)cc1")
 Draw.MolToImage(mol2)
 img = Draw.MolToImage(mol2, size=(400, 300))
-#img.save("polyphox_monomer2.png")
+# img.save("polyphox_monomer2.png")
 
-mol3 = Chem.MolFromSmiles('c1ccc(cc1)C(c2ccccc2)C3NCCO3')
+mol3 = Chem.MolFromSmiles("c1ccc(cc1)C(c2ccccc2)C3NCCO3")
 Draw.MolToImage(mol3)
 img = Draw.MolToImage(mol3, size=(400, 300))
 img.save("polyphox_monomer3.png")
 
-mol4 = Chem.MolFromSmiles('c1ccccc1C(C2=NCCO2)c3ccccc3')
+mol4 = Chem.MolFromSmiles("c1ccccc1C(C2=NCCO2)c3ccccc3")
 Draw.MolToImage(mol4)
 img = Draw.MolToImage(mol4, size=(400, 300))
 img.save("polyphox_monomer4.png")
 
-mol5 = Chem.MolFromSmiles('c1ccccc1C(C2=NCCO2)c3ccccc3')
+mol5 = Chem.MolFromSmiles("c1ccccc1C(C2=NCCO2)c3ccccc3")
 Draw.MolToImage(mol5)
 img = Draw.MolToImage(mol5, size=(400, 300))
 img.save("polyphox_monomer5.png")
 
-smi5 = 'c1ccccc1C(C2=NCCO2)c3ccccc3'
+smi5 = "c1ccccc1C(C2=NCCO2)c3ccccc3"
 if res is not None:
     (smi5, mw, logp, hbd, hba, tpsa) = res
     print(f"SMILES: {smi5}")

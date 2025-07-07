@@ -1,38 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-visualize_latent_space_fixed.py
---------------------------------
-Standalone script to project the latent space of a *ConditionalAutoencoder* 🧬
-into 2‑D using UMAP and colour the points by logP.
-
-Major improvements over the original version
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1. **Removed brittle external dependencies** (‵ZINC‵ dataset class and
-   ‵generatore2.py‵).  You can now load a pre‑computed vocabulary from a
-   plain text/NumPy file **or** build one on‑the‑fly from the SMILES list
-   you want to visualise.
-2. **Added missing model arguments** (the original script crashed because
-   *emb_size* was not passed to the model constructor).
-3. **Replaced the non‑existent `model.encode()` call** with the latent
-   tensor returned by the model’s `forward` pass.
-4. **Extra CLI flags** –‐ `--smiles_file` to read SMILES from a file and
-   `--vocab_file` to reuse the vocabulary employed during training.
-5. **Graceful error handling & progress messages** for an easier
-   interactive experience.
-
-Run it with something like::
-
-    python visualize_latent_space_fixed.py \
-        --save_dir my_checkpoints \
-        --smiles_file example.smi \
-        --vocab_file vocab.npy
-
-or just rely on the default built‑in SMILES list for a quick smoke test.
-"""
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 from typing import List, Tuple
 
@@ -43,15 +12,13 @@ import umap
 from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors
 
-# ----------------------------- local imports ----------------------------- #
-from model_new import ConditionalAutoencoder  # noqa: E402
-from generatore2 import load_vocab
-###############################################################################
-# Utility helpers
-###############################################################################
-
 import pandas as pd
 from scipy.spatial import distance
+
+
+# ----------------------------- local imports ----------------------------- #
+from model.CAE import ConditionalAutoencoder  # noqa: E402
+from generatore2 import load_vocab
 
 
 PAD, EOS, SOS = "_", "E", "X"  # special tokens expected by the model
@@ -71,6 +38,7 @@ def build_vocab_from_smiles(smiles_list: List[str]) -> Tuple[dict[str, int], dic
     idx2char = {i: c for i, c in enumerate(full)}
     return char2idx, idx2char
 
+
 def smiles_to_tensor(
     smiles_list: List[str],
     char2idx: dict[str, int],
@@ -88,9 +56,8 @@ def smiles_to_tensor(
         mw = Descriptors.ExactMolWt(mol)
         logp = Descriptors.MolLogP(mol)
         hbd = rdMolDescriptors.CalcNumHBD(mol)
-        hba= rdMolDescriptors.CalcNumHBA(mol)
-        tpsa= rdMolDescriptors.CalcTPSA(mol)
-
+        hba = rdMolDescriptors.CalcNumHBA(mol)
+        tpsa = rdMolDescriptors.CalcTPSA(mol)
 
         logp_vals.append(logp)
 
@@ -101,7 +68,7 @@ def smiles_to_tensor(
 
         padded = [char2idx[SOS]] + token_ids + [char2idx[EOS]] * (seq_length - len(token_ids) - 1)
         xs.append(padded)
-        #cs.append([logp])  # conditioning vector (shape: 1)
+        # cs.append([logp])  # conditioning vector (shape: 1)
         cs.append([mw, logp, hbd, hba, tpsa])
         ls.append(len(token_ids) + 1)  # +1 for SOS
         valid.append(smi)
@@ -117,9 +84,11 @@ def smiles_to_tensor(
         valid,
     )
 
+
 ###############################################################################
 # Main routine
 ###############################################################################
+
 
 def run(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -147,7 +116,7 @@ def run(args: argparse.Namespace) -> None:
         latent_size=args.latent_size,
         unit_size=args.unit_size,
         n_rnn_layer=args.n_layers,
-        num_prop=5,            # logP
+        num_prop=5,  # logP
         batch_size=128,
         emb_size=args.emb_size,
     )
@@ -169,8 +138,6 @@ def run(args: argparse.Namespace) -> None:
     x, c, l, logp_vals, valid_smiles = smiles_to_tensor(args.smiles, vocab, args.seq_length)
     x, c, l = x.to(device), c.to(device), l.to(device)
 
-
-
     # mean = [330.83067929, 3.08029442, 0.99482004, 4.15394077, 64.32489958]
     # std = [68.58793322 ,1.3349934 , 0.80812124, 1.65984879 , 23.59095824]
     # std[std == 0] = 1.0                            # evita div/0 su colonne costanti
@@ -178,7 +145,7 @@ def run(args: argparse.Namespace) -> None:
 
     with torch.no_grad():
         # forward() returns (z, logits, dec_out)
-        #c = torch.zeros([x.shape[0], c.shape[1]], device=device)
+        # c = torch.zeros([x.shape[0], c.shape[1]], device=device)
         x = torch.zeros_like(x, device=device)
         latent = model(x, c, l)[0].cpu().numpy()
         print(f"[INFO] Encoded {latent.shape[0]} molecules → latent_dim={latent.shape[1]}")
@@ -193,7 +160,7 @@ def run(args: argparse.Namespace) -> None:
             print(f"[INFO] Reference SMILES found at index {ref_index}")
         except ValueError:
             raise ValueError(f"Reference SMILES '{args.ref_smiles}' not found in the input list.")
-        
+
         VI = np.linalg.inv(np.cov(latent, rowvar=False))
 
         print("[INFO] Computing distances from reference embedding …")
@@ -203,24 +170,24 @@ def run(args: argparse.Namespace) -> None:
             "manhattan": [distance.cityblock(ref_embedding, z) for z in latent],
             "correlation": [distance.correlation(ref_embedding, z) for z in latent],
             "mahalanobis": [distance.mahalanobis(ref_embedding, z, VI) for z in latent],
-            "chebyshev": [distance.chebyshev(ref_embedding, z) for z in latent]
+            "chebyshev": [distance.chebyshev(ref_embedding, z) for z in latent],
         }
 
-        df = pd.DataFrame({
-            "SMILES": valid_smiles,
-            "logP": logp_vals,
-            "euclidean": dists["euclidean"],
-            "cosine": dists["cosine"],
-            "manhattan": dists["manhattan"],
-            "correlation": dists["correlation"],
-            "mahalanobis": dists["mahalanobis"],
-            "chebyshev": dists["chebyshev"]
-
-        })
+        df = pd.DataFrame(
+            {
+                "SMILES": valid_smiles,
+                "logP": logp_vals,
+                "euclidean": dists["euclidean"],
+                "cosine": dists["cosine"],
+                "manhattan": dists["manhattan"],
+                "correlation": dists["correlation"],
+                "mahalanobis": dists["mahalanobis"],
+                "chebyshev": dists["chebyshev"],
+            }
+        )
         out_csv = Path(args.out).with_suffix(".csv")
-        df.to_csv(out_csv, index=False, sep=';')
+        df.to_csv(out_csv, index=False, sep=";")
         print(f"[INFO] Distance table saved to {out_csv.as_posix()}")
-
 
     print(f"[INFO] Encoded {latent.shape[0]} molecules → latent_dim={latent.shape[1]}")
 
@@ -245,11 +212,14 @@ def run(args: argparse.Namespace) -> None:
     # annotate each point with its SMILES (optional – can get crowded!)
     if args.annotate:
         for i, smi in enumerate(valid_smiles):
-            plt.annotate(smi, (embedding[i, 0], embedding[i, 1]), xytext=(4, 4), textcoords="offset points", fontsize=8)
+            plt.annotate(
+                smi, (embedding[i, 0], embedding[i, 1]), xytext=(4, 4), textcoords="offset points", fontsize=8
+            )
 
     out_path = Path(args.out).with_suffix(".png")
     plt.savefig(out_path, dpi=300, bbox_inches="tight")
     print(f"[INFO] Plot saved to {out_path.as_posix()}")
+
 
 ###############################################################################
 # CLI
@@ -259,11 +229,25 @@ def run(args: argparse.Namespace) -> None:
 def parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Visualise the latent space of a ConditionalAutoencoder")
 
-    parser.add_argument("--save_dir", type=str, default="save_no_scaled", help="Directory containing model_*.pt checkpoints")
-    parser.add_argument("--seq_length", type=int, default=120, help="Maximum sequence length used during training")
+    parser.add_argument(
+        "--save_dir", type=str, default="save_no_scaled", help="Directory containing model_*.pt checkpoints"
+    )
+    parser.add_argument(
+        "--seq_length", type=int, default=120, help="Maximum sequence length used during training"
+    )
 
-    parser.add_argument("--smiles_file", type=str, default=None, help="Plain‑text file with one SMILES per line (overrides the built‑in list)")
-    parser.add_argument("--vocab_file", type=str, default="save_no_scaled", help="NumPy .npy file with the vocabulary used during training")
+    parser.add_argument(
+        "--smiles_file",
+        type=str,
+        default=None,
+        help="Plain‑text file with one SMILES per line (overrides the built‑in list)",
+    )
+    parser.add_argument(
+        "--vocab_file",
+        type=str,
+        default="save_no_scaled",
+        help="NumPy .npy file with the vocabulary used during training",
+    )
 
     parser.add_argument("--latent_size", type=int, default=200)
     parser.add_argument("--unit_size", type=int, default=512)
@@ -274,8 +258,15 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument("--min_dist", type=float, default=0.3, help="UMAP min_dist parameter")
 
     parser.add_argument("--annotate", action="store_true", help="Draw the SMILES string next to every point")
-    parser.add_argument("--out", type=str, default="latent_space_umap_no_smiles_dist_pol2.png", help="Output image filename")
-    parser.add_argument("--ref_smiles", type=str, default="OCCN(C(=O)C(c1ccccc1)c1ccccc1)", help="SMILES string to use as reference for distance computation")
+    parser.add_argument(
+        "--out", type=str, default="latent_space_umap_no_smiles_dist_pol2.png", help="Output image filename"
+    )
+    parser.add_argument(
+        "--ref_smiles",
+        type=str,
+        default="OCCN(C(=O)C(c1ccccc1)c1ccccc1)",
+        help="SMILES string to use as reference for distance computation",
+    )
 
     args = parser.parse_args()
 
@@ -287,28 +278,26 @@ def parse_cli() -> argparse.Namespace:
             args.smiles = [l.strip() for l in f if l.strip()]
     else:
         args.smiles = [  # quick demo list
-            'CCN(CC)CCNC(=O)C1=CC(=C(C=C1OC)N)Cl', #Metoclopramide
-            'CC1=C(C2=C(N1C(=O)C3=CC=C(C=C3)Cl)C=CC(=C2)OC)CC(=O)O', #Indomethacin
-            "CC(=O)OC1=CC=CC=C1C(=O)O", # Aspirin
-            "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",                # Ibuprofen
-            "c1ccccc1",                      # Benzene
-            "O=C(O)c1ccccc1C(=O)O",          # Phthalic acid
+            "CCN(CC)CCNC(=O)C1=CC(=C(C=C1OC)N)Cl",  # Metoclopramide
+            "CC1=C(C2=C(N1C(=O)C3=CC=C(C=C3)Cl)C=CC(=C2)OC)CC(=O)O",  # Indomethacin
+            "CC(=O)OC1=CC=CC=C1C(=O)O",  # Aspirin
+            "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",  # Ibuprofen
+            "c1ccccc1",  # Benzene
+            "O=C(O)c1ccccc1C(=O)O",  # Phthalic acid
             "c1ccc2c(c1)ccc3c2ccc4c3cccc4",  # Chrysene
-            "C1CCCCC1",                      # Cyclohexane
-            "CCO",                           # Ethanol
-            "CNC(=O)N(C)C",                  # Dimethylurea
-            #"CC(=O)O",                       # Acetic acid
-            #"C1=CC=C(C=C1)C(C(C(=O)O)N)C(C(=O)O)N",  # Example with heteroatoms
+            "C1CCCCC1",  # Cyclohexane
+            "CCO",  # Ethanol
+            "CNC(=O)N(C)C",  # Dimethylurea
+            # "CC(=O)O",                       # Acetic acid
+            # "C1=CC=C(C=C1)C(C(C(=O)O)N)C(C(=O)O)N",  # Example with heteroatoms
             "C[C@]12CC[C@H]3[C@H]([C@@H]1CC[C@@H]2O)CCC4=C3C=CC(=C4)O",  # Oestradiol
             "CC1=C(C(=O)N(N1C)C2=CC=CC=C2)N(C)C",  # Pyramidone
             "CC1=NC=C(C=C1)C2=C(C=C(C=N2)Cl)C3=CC=C(C=C3)S(=O)(=O)C",
             "CS(=O)(=O)NC1=C(C=C(C=C1)[N+](=O)[O-])OC2=CC=CC=C2",
             "C1=CC=C(C(=C1)CC(=O)O)NC2=C(C=CC=C2Cl)Cl",
-            
-
-            #"C1=CC=C(C=C1)CC2=CC=CC=C2", 
-           # "c1ccccc1C1NC=CO1", 
-            "OCCN(C(=O)C(c1ccccc1)c1ccccc1)" # POLYMER (BOOOOOOH)
+            # "C1=CC=C(C=C1)CC2=CC=CC=C2",
+            # "c1ccccc1C1NC=CO1",
+            "OCCN(C(=O)C(c1ccccc1)c1ccccc1)",  # POLYMER (BOOOOOOH)
         ]
     return args
 

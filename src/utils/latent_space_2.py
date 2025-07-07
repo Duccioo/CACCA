@@ -51,7 +51,7 @@ except ImportError:  # graceful fallback
     print("[WARN] SciPy not found – only Euclidean distance available.")
 
 # ----------------------------- local imports ----------------------------- #
-from model_new import ConditionalAutoencoder  # noqa: E402
+from model.CAE import ConditionalAutoencoder  # noqa: E402
 from generatore2 import load_vocab  # noqa: E402
 
 ###############################################################################

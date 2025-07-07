@@ -53,7 +53,7 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors
 
 # -------------------------------------------------------------------------
-from model_new import ConditionalAutoencoder  # noqa: E402
+from model.CAE import ConditionalAutoencoder  # noqa: E402
 from generatore2 import load_vocab
 # -------------------------------------------------------------------------
 

@@ -1,13 +1,9 @@
-
-#https://chemistry.stackexchange.com/questions/168293/accessing-the-zinc15-and-zinc20-databases
+# https://chemistry.stackexchange.com/questions/168293/accessing-the-zinc15-and-zinc20-databases
 """
-B. Fingerprint → rete di proiezione	Generi un Morgan FP (o RDKit descriptors) del polimero, 
-poi addestri un piccolo MLP per proiettarlo nello stesso spazio latente del CAE (vedi § 4)	
+B. Fingerprint → rete di proiezione	Generi un Morgan FP (o RDKit descriptors) del polimero,
+poi addestri un piccolo MLP per proiettarlo nello stesso spazio latente del CAE (vedi § 4)
 Usa info chimica reale del polimero	Serve un minimissimo fine-tuning (self-supervised)
 """
-
-
-
 
 
 from rdkit.Chem.Descriptors import ExactMolWt
@@ -20,39 +16,34 @@ from rdkit import Chem
 
 def cal_prop(s):
     m = Chem.MolFromSmiles(s)
-    if m is None : return None
-    #return s, ExactMolWt(m), MolLogP(m), CalcNumHBD(m), CalcNumHBA(m), CalcTPSA(m)
-    #return s, ExactMolWt(m), MolLogP(m), CalcTPSA(m)
-    #return Chem.MolToSmiles(m), ExactMolWt(m), MolLogP(m), CalcTPSA(m)
+    if m is None:
+        return None
+    # return s, ExactMolWt(m), MolLogP(m), CalcNumHBD(m), CalcNumHBA(m), CalcTPSA(m)
+    # return s, ExactMolWt(m), MolLogP(m), CalcTPSA(m)
+    # return Chem.MolToSmiles(m), ExactMolWt(m), MolLogP(m), CalcTPSA(m)
     return Chem.MolToSmiles(m), ExactMolWt(m), MolLogP(m), CalcNumHBD(m), CalcNumHBA(m), CalcTPSA(m)
 
 
-aspirin = 'CC(=O)OC1=CC=CC=C1C(=O)O'
-ibuprofen = 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O'
-Metoclopramide = 'CCN(CC)CCNC(=O)C1=CC(=C(C=C1OC)N)Cl'
-Pyramidone = 'CC1=C(C(=O)N(N1C)C2=CC=CC=C2)N(C)C'
-Oestradiol = 'C[C@]12CC[C@H]3[C@H]([C@@H]1CC[C@@H]2O)CCC4=C3C=CC(=C4)O'
-Indomethacin = 'CC1=C(C2=C(N1C(=O)C3=CC=C(C=C3)Cl)C=CC(=C2)OC)CC(=O)O'
+aspirin = "CC(=O)OC1=CC=CC=C1C(=O)O"
+ibuprofen = "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O"
+Metoclopramide = "CCN(CC)CCNC(=O)C1=CC(=C(C=C1OC)N)Cl"
+Pyramidone = "CC1=C(C(=O)N(N1C)C2=CC=CC=C2)N(C)C"
+Oestradiol = "C[C@]12CC[C@H]3[C@H]([C@@H]1CC[C@@H]2O)CCC4=C3C=CC(=C4)O"
+Indomethacin = "CC1=C(C2=C(N1C(=O)C3=CC=C(C=C3)Cl)C=CC(=C2)OC)CC(=O)O"
 
 
-print(f'Aspirin', cal_prop(aspirin))
-print(f'ibuprofen', cal_prop(ibuprofen))
-print(f'metoclopramide', cal_prop(Metoclopramide))
-print(f'pyramidone', cal_prop(Pyramidone))
-print(f'oestradiol', cal_prop(Oestradiol))
-print(f'indomethacin', cal_prop(Indomethacin))
+print(f"Aspirin", cal_prop(aspirin))
+print(f"ibuprofen", cal_prop(ibuprofen))
+print(f"metoclopramide", cal_prop(Metoclopramide))
+print(f"pyramidone", cal_prop(Pyramidone))
+print(f"oestradiol", cal_prop(Oestradiol))
+print(f"indomethacin", cal_prop(Indomethacin))
 
 
-pol = 'OCCN(C(=O)C(c1ccccc1)c1ccccc1)'
+pol = "OCCN(C(=O)C(c1ccccc1)c1ccccc1)"
 print(cal_prop(pol))
 
 # smiles2chemdraw.py
-from pathlib import Path
-import subprocess
-from typing import Optional
-
-from rdkit import Chem
-from rdkit.Chem import AllChem, Draw
 
 
 # def smiles_to_molfile(
@@ -95,5 +86,3 @@ from rdkit.Chem import AllChem, Draw
 #     smiles_to_molfile(
 #         pol
 #     )
-
-
