@@ -1,3 +1,6 @@
+from typing import Callable, Union, Any
+import inspect
+
 import torch
 import torch.nn as nn
 
@@ -9,51 +12,56 @@ class ConditionalAutoencoder(nn.Module):
     - Decoder: LSTM condizionato (latente + proprietà)
     """
 
-    def __init__(self, vocab_size, args):
-        """
-        Args
-        ----
-        vocab_size : int          # dimensione vocabolario
-        args.latent_size : int
-        args.unit_size : int      # hidden size LSTM
-        args.n_rnn_layer : int
-        args.num_prop   : int     # n. proprietà condizionali (5 nel tuo caso)
-        """
+    def __init__(
+        self,
+        vocab_size,
+        latent_size,
+        emb_size,
+        unit_size,
+        n_rnn_layer,
+        num_prop,
+        encoder_biLSTM=True,
+        decoder_biLSTM=False,
+    ):
+
         super().__init__()
 
-        self.emb_size = args.emb_size
         self.vocab_size = vocab_size
-        self.latent_size = args.latent_size
-        self.unit_size = args.unit_size
-        self.n_layers = args.n_rnn_layer
-        self.num_prop = args.num_prop
-        self.biLSTM = True  # bidirezionale
+        self.latent_size = latent_size
+        self.unit_size = unit_size
+        self.n_layers = n_rnn_layer
+        self.num_prop = num_prop
+        self.encoder_biLSTM = encoder_biLSTM
+        self.decoder_biLSTM = decoder_biLSTM
 
         # --- Embedding per token
-        self.embedding = nn.Embedding(vocab_size, args.emb_size)
+        self.embedding = nn.Embedding(vocab_size, emb_size)
 
         # --- Encoder -------------------------------------------------
+        encoder_hidden_size = self.unit_size
         self.encoder_rnn = nn.LSTM(
-            input_size=args.emb_size + self.num_prop,  # token emb + prop
-            hidden_size=self.unit_size,
+            input_size=emb_size + self.num_prop,
+            hidden_size=encoder_hidden_size,
             num_layers=self.n_layers,
             batch_first=True,
-            bidirectional=False if not self.biLSTM else True,
+            bidirectional=self.encoder_biLSTM,
         )
-        # Proiezione a vettore latente
-        if self.biLSTM:
-            self.unit_size = 2 * self.unit_size  # bidirezionale
-        self.to_latent = nn.Linear(self.unit_size, self.latent_size)
 
         # --- Decoder -------------------------------------------------
+        # La dimensione dell'input per il layer latente dipende dalla bidirezionalità
+        encoder_output_size = encoder_hidden_size * 2 if self.encoder_biLSTM else encoder_hidden_size
+        self.to_latent = nn.Linear(encoder_output_size, self.latent_size)
+
+        # La dimensione nascosta del decoder può essere diversa
+        decoder_hidden_size = encoder_output_size  # Esempio: la stessa dell'output dell'encoder
         self.decoder_rnn = nn.LSTM(
-            input_size=args.emb_size + self.latent_size + self.num_prop,
-            hidden_size=self.unit_size,
+            input_size=emb_size + self.latent_size + self.num_prop,
+            hidden_size=decoder_hidden_size,
             num_layers=self.n_layers,
             batch_first=True,
-            bidirectional=False if not self.biLSTM else True,
+            bidirectional=self.decoder_biLSTM,
         )
-        self.output_linear = nn.Linear(self.unit_size, vocab_size)
+        self.output_linear = nn.Linear(decoder_hidden_size, vocab_size)
 
         # Inizializzazione xavier per stabilità
         for m in self.modules():
@@ -131,6 +139,36 @@ class ConditionalAutoencoder(nn.Module):
             x = next_idx
 
         return torch.cat(generated, dim=1)  # (B, seq_len)
+
+    def configure_optimizers(self, weight_decay, learning_rate, betas=(0.9, 0.999)):
+        device_type = self.parameters().__next__().device
+
+        # start with all of the candidate parameters
+        param_dict = {pn: p for pn, p in self.named_parameters()}
+        # filter out those that do not require grad
+        param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
+        # create optim groups. Any parameters that is 2D will be weight decayed, otherwise no.
+        # i.e. all weight tensors in matmuls + embeddings decay, all biases and layernorms don't.
+        decay_params = [p for n, p in param_dict.items() if p.dim() >= 2]
+        nodecay_params = [p for n, p in param_dict.items() if p.dim() < 2]
+        optim_groups = [
+            {"params": decay_params, "weight_decay": weight_decay},
+            {"params": nodecay_params, "weight_decay": 0.0},
+        ]
+        # num_decay_params = sum(p.numel() for p in decay_params)
+        # num_nodecay_params = sum(p.numel() for p in nodecay_params)
+        # print(f"num decayed parameter tensors: {len(decay_params)}, with {num_decay_params:,} parameters")
+        # print(
+        #     f"num non-decayed parameter tensors: {len(nodecay_params)}, with {num_nodecay_params:,} parameters"
+        # )
+        # Create AdamW optimizer and use the fused version if it is available
+        fused_available = "fused" in inspect.signature(torch.optim.AdamW).parameters
+        use_fused = fused_available and device_type == "cuda"
+        extra_args = dict(fused=True) if use_fused else dict()
+        optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas, **extra_args)
+        # print(f"using fused AdamW: {use_fused}")
+
+        return optimizer
 
     def sample(
         self,
@@ -210,4 +248,3 @@ class ConditionalAutoencoder(nn.Module):
 
     def restore(self, path, map_location="cpu"):
         self.load_state_dict(torch.load(path, map_location=map_location))
-        self.eval()

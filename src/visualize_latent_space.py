@@ -16,8 +16,8 @@ import pandas as pd
 from scipy.spatial import distance
 
 
-# ----------------------------- local imports ----------------------------- #
-from model.CAE import ConditionalAutoencoder  # noqa: E402
+# ---
+from model.CAE import ConditionalAutoencoder 
 from generatore2 import load_vocab
 
 

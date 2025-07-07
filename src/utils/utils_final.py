@@ -3,6 +3,15 @@ from rdkit import Chem
 import collections
 import h5py
 
+# ---
+
+SPECIAL_TOKENS = {
+    "PAD": "_",  # token di padding
+    "EOS": "E",  # end-of-sequence
+    "SOS": "X",  # start-of-sequence
+    "UNK": "U",  # unknown token
+}
+
 
 def convert_to_smiles(vector, char):
     list_char = list(char)
@@ -122,39 +131,33 @@ def accuracy(arr1, arr2, length):
     return float(count1 / float(total)), float(count2 / count3)
 
 
-def load_data(path, seq_length):
+def load_data(path, max_seq_length=120, special_tokens=SPECIAL_TOKENS):
     """
-    Loads and processes SMILES data from a file, preparing it for sequence modeling tasks.
-    Args:
-        path (str): Path to the input file containing SMILES strings and associated properties.
-        seq_length (int): The fixed sequence length for input/output sequences (including special tokens).
-    Returns:
-        smiles_input (np.ndarray): Array of shape (N, seq_length) with input SMILES sequences as indices,
-            padded and prepended with SOS token.
-        smiles_output (np.ndarray): Array of shape (N, seq_length) with output SMILES sequences as indices,
-            padded and appended with EOS token.
-        chars (tuple): Tuple of all characters in the vocabulary, starting with PAD, EOS, SOS.
-        vocab (dict): Dictionary mapping each character in the vocabulary to its integer index.
-        prop (np.ndarray): Array of shape (N, 5) with molecular properties as float32.
-        length (np.ndarray): Array of shape (N,) with the true lengths (including SOS) of each sequence.
-    Notes:
-        - The input file is expected to have one SMILES string and five properties per line, separated by spaces.
-        - Sequences longer than (seq_length - 2) are filtered out.
-        - Special tokens: PAD ('_'), EOS ('E'), SOS ('X').
-        - The function prints "diolupo" if a line does not have exactly six elements.
+    Carica un file di SMILES e proprietà, costruisce il vocabolario e converte i SMILES in indici.
+    Ritorna:
+        - smiles_input: array di SMILES come sequenze di indici (input)
+        - smiles_output: array di SMILES come sequenze di indici (output)
+        - chars: tuple di caratteri unici (vocabolario)
+        - vocab: dizionario che mappa caratteri a indici
+        - prop: array di proprietà come float32
+        - length: array delle lunghezze delle sequenze SMILES (incluso SOS)
     """
 
-    PAD = "_"  # token di padding
-    EOS = "E"  # end-of-sequence
-    SOS = "X"  # start-of-sequence
+    PAD = special_tokens["PAD"]
+    EOS = special_tokens["EOS"]
+    SOS = special_tokens["SOS"]
 
     # ── Leggi file ────────────────────────────────────────────────
     with open(path) as f:
         lines = [l.split() for l in f.read().splitlines() if l.strip()]
 
+    print(f"Loaded {len(lines)} lines from {path}")
+
     # Filtra le sequenze troppo lunghe
-    lines = [l for l in lines if len(l[0]) < seq_length - 2]  # -SOS -EOS
+    lines = [l for l in lines if len(l[0]) < max_seq_length - 2]  # -SOS -EOS
     smiles = [l[0] for l in lines]
+
+    print(f"Filtered to {len(lines)} lines with length < {max_seq_length - 2}")
 
     # ── Costruisci il vocabolario ────────────────────────────────
     counter = collections.Counter("".join(smiles))
@@ -167,13 +170,20 @@ def load_data(path, seq_length):
     # ── Converte SMILES in indici + padding ──────────────────────
     length = np.array([len(s) + 1 for s in smiles], dtype=np.int64)  # +1 per SOS
 
-    smiles_input = [(SOS + s).ljust(seq_length, PAD) for s in smiles]
-    smiles_output = [(s + EOS).ljust(seq_length, PAD) for s in smiles]
+    smiles_input = [(SOS + s).ljust(max_seq_length, PAD) for s in smiles]
+    smiles_output = [(s + EOS).ljust(max_seq_length, PAD) for s in smiles]
 
     smiles_input = np.array([[vocab[ch] for ch in s] for s in smiles_input], dtype=np.int64)
     smiles_output = np.array([[vocab[ch] for ch in s] for s in smiles_output], dtype=np.int64)
 
     # ── Carica le proprietà (float32) ────────────────────────────
+    if len(lines[0]) > 1:
+        prop = [l[1:] for l in lines if len(l) > 1]
+        if not prop:
+            raise ValueError("No properties found in the file.")
+    else:
+        raise ValueError("File does not contain properties.")
+
     prop = np.array([l[1:] for l in lines], dtype=np.float32)
 
     return smiles_input, smiles_output, chars, vocab, prop, length

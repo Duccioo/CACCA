@@ -15,11 +15,6 @@ from model.CAE import ConditionalAutoencoder
 from utils.utils_final import load_data
 
 
-# print(torch.__version__)
-# print(torch.version.cuda)
-# print(torch.cuda.is_available())
-
-
 # Seed
 def set_seed(seed=69, hard=False):
     os.environ["PYTHONHASHSEED"] = str(seed)  # facoltativo
@@ -83,6 +78,7 @@ def main(args):
 
     # --- Hyperparameters ---
     training_percent = 0.75  # 75% training, 25% test
+    dataset_folder = "dataset"
 
     # --- Load data from SMILES+properties file ---
     molecules_input, molecules_output, char, vocab, labels, length = load_data(
@@ -90,6 +86,8 @@ def main(args):
     )
     vocab_size = len(char)
     print(f"Vocabulary size: {vocab_size}")
+
+    exit()
 
     # Save vocab for generation
     vocab_data = {"char": char, "vocab": vocab}
@@ -129,7 +127,7 @@ def main(args):
         model = nn.DataParallel(model)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    # optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    # optimizer = model.configure_optimizers(weight_decay=1e-5, lr=args.lr)
 
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
