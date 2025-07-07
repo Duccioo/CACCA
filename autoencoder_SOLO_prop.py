@@ -38,6 +38,7 @@ class CSVDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx]
 
+#miaomiao
 
 class Autoencoder(nn.Module):
     """Simple fully connected Autoencoder."""
