@@ -200,7 +200,7 @@ def run(args: argparse.Namespace) -> None:
             "manhattan": dists["manhattan"]
         })
         out_csv = Path(args.out).with_suffix(".csv")
-        df.to_csv(out_csv, index=False)
+        df.to_csv(out_csv, index=False, )
         print(f"[INFO] Distance table saved to {out_csv.as_posix()}")
 
 
