@@ -2,8 +2,13 @@ import numpy as np
 from rdkit import Chem
 import collections
 import h5py
+import pathlib
+import requests
 
 # ---
+from cal_prop import preprocessing
+
+ZINC_DOWNLOAD_URL = "https://github.com/jaechanglim/CVAE/blob/master/smiles.txt?raw=true"
 
 SPECIAL_TOKENS = {
     "PAD": "_",  # token di padding
@@ -143,6 +148,17 @@ def load_data(path, max_seq_length=120, special_tokens=SPECIAL_TOKENS):
         - length: array delle lunghezze delle sequenze SMILES (incluso SOS)
     """
 
+    # ── Controlla il percorso del file ───────────────────────────
+    path = pathlib.Path(path)
+    dataset_path = path.parent
+
+    if not path.exists():
+        # scarico il file se non esiste
+        response = requests.get(ZINC_DOWNLOAD_URL)
+        if response.status_code == 200:
+            with open(path, "w") as f:
+                f.write(response.text)
+
     PAD = special_tokens["PAD"]
     EOS = special_tokens["EOS"]
     SOS = special_tokens["SOS"]
@@ -150,6 +166,8 @@ def load_data(path, max_seq_length=120, special_tokens=SPECIAL_TOKENS):
     # ── Leggi file ────────────────────────────────────────────────
     with open(path) as f:
         lines = [l.split() for l in f.read().splitlines() if l.strip()]
+        if not lines:
+            exit("File is empty or not valid.")
 
     print(f"Loaded {len(lines)} lines from {path}")
 
@@ -172,18 +190,39 @@ def load_data(path, max_seq_length=120, special_tokens=SPECIAL_TOKENS):
 
     smiles_input = [(SOS + s).ljust(max_seq_length, PAD) for s in smiles]
     smiles_output = [(s + EOS).ljust(max_seq_length, PAD) for s in smiles]
-
+    print(smiles_input[0])
     smiles_input = np.array([[vocab[ch] for ch in s] for s in smiles_input], dtype=np.int64)
     smiles_output = np.array([[vocab[ch] for ch in s] for s in smiles_output], dtype=np.int64)
+    
+    print(smiles_input[0])
+    print(vocab)
+    exit()
 
     # ── Carica le proprietà (float32) ────────────────────────────
     if len(lines[0]) > 1:
-        prop = [l[1:] for l in lines if len(l) > 1]
-        if not prop:
-            raise ValueError("No properties found in the file.")
+        prop = np.array([l[1:] for l in lines if len(l) > 1], dtype=np.float32)
     else:
-        raise ValueError("File does not contain properties.")
-
-    prop = np.array([l[1:] for l in lines], dtype=np.float32)
+        preprocessed = preprocessing(
+            smiles, ncpu=4, save_path=dataset_path / "ZINC_with_prop.csv", scale_method="zscore"
+        )
+        print(preprocessed[0])
+        prop = np.array([l[1:] for l in preprocessed], dtype=np.float32)
 
     return smiles_input, smiles_output, chars, vocab, prop, length
+
+
+def test():
+    # Test the load_data function
+    path = "dataset/ZINC/smiles.txt"
+    smiles_input, smiles_output, chars, vocab, prop, length = load_data(path)
+
+    print("SMILES Input:", smiles_input[:5])
+    print("SMILES Output:", smiles_output[:5])
+    print("Characters:", chars)
+    print("Vocabulary:", vocab)
+    print("Properties:", prop[:5])
+    print("Lengths:", length[:5])
+
+
+if __name__ == "__main__":
+    test()

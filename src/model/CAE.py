@@ -15,21 +15,16 @@ class ConditionalAutoencoder(nn.Module):
     def __init__(
         self,
         vocab_size,
-        latent_size,
-        emb_size,
-        unit_size,
-        n_rnn_layer,
         num_prop,
+        latent_size=256,
+        emb_size=128,
+        hidden_size=512,
+        n_rnn_layer=3,
         encoder_biLSTM=True,
         decoder_biLSTM=False,
     ):
 
         super().__init__()
-
-        self.vocab_size = vocab_size
-        self.latent_size = latent_size
-        self.unit_size = unit_size
-        self.n_layers = n_rnn_layer
         self.num_prop = num_prop
         self.encoder_biLSTM = encoder_biLSTM
         self.decoder_biLSTM = decoder_biLSTM
@@ -37,35 +32,43 @@ class ConditionalAutoencoder(nn.Module):
         # --- Embedding per token
         self.embedding = nn.Embedding(vocab_size, emb_size)
 
-        # --- Encoder -------------------------------------------------
-        encoder_hidden_size = self.unit_size
+        # --- Encoder -----------------------------------------------
+        encoder_hidden_size = hidden_size
         self.encoder_rnn = nn.LSTM(
             input_size=emb_size + self.num_prop,
             hidden_size=encoder_hidden_size,
-            num_layers=self.n_layers,
+            num_layers=n_rnn_layer,
             batch_first=True,
-            bidirectional=self.encoder_biLSTM,
+            bidirectional=encoder_biLSTM,
         )
 
         # --- Decoder -------------------------------------------------
         # La dimensione dell'input per il layer latente dipende dalla bidirezionalità
-        encoder_output_size = encoder_hidden_size * 2 if self.encoder_biLSTM else encoder_hidden_size
-        self.to_latent = nn.Linear(encoder_output_size, self.latent_size)
+        encoder_output_size = encoder_hidden_size * 2 if encoder_biLSTM else encoder_hidden_size
+        self.to_latent = nn.Linear(encoder_output_size, latent_size)
 
         # La dimensione nascosta del decoder può essere diversa
         decoder_hidden_size = encoder_output_size  # Esempio: la stessa dell'output dell'encoder
         self.decoder_rnn = nn.LSTM(
-            input_size=emb_size + self.latent_size + self.num_prop,
+            input_size=emb_size + latent_size + num_prop,
             hidden_size=decoder_hidden_size,
-            num_layers=self.n_layers,
+            num_layers=n_rnn_layer,
             batch_first=True,
-            bidirectional=self.decoder_biLSTM,
+            bidirectional=decoder_biLSTM,
         )
         self.output_linear = nn.Linear(decoder_hidden_size, vocab_size)
 
-        # Inizializzazione xavier per stabilità
+        # Inizializzazione dei pesi
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        """Inizializza i pesi dei layer lineari e degli embedding."""
         for m in self.modules():
             if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Embedding):
                 nn.init.xavier_uniform_(m.weight)
 
     # ---------------------------------------------------------------
@@ -81,27 +84,33 @@ class ConditionalAutoencoder(nn.Module):
 
         # --- Encoder ------------------------------------------------
         emb = self.embedding(x)  # (B, T, E)
-        c_exp = c.unsqueeze(1).repeat(1, T, 1)  # (B, T, num_prop)
-        enc_inp = torch.cat([emb, c_exp], dim=-1)  # (B, T, E+prop)
+        c_expanded = c.unsqueeze(1).repeat(1, T, 1)  # (B, T, num_prop)
+        enc_inp = torch.cat([emb, c_expanded], dim=-1)  # (B, T, E+prop)
 
         packed = nn.utils.rnn.pack_padded_sequence(
             enc_inp, lengths.cpu(), batch_first=True, enforce_sorted=False
         )
-        _, (h_n, _) = self.encoder_rnn(packed)  # h_n: (layers, B, H)
-        h_last = h_n[-1]  # (B, H)
+        _, (h_n, c_n) = self.encoder_rnn(packed)  # h_n: (layers, B, H)
 
-        if self.biLSTM:
-            h_in = torch.cat([h_last, h_n[-2]], dim=-1)
+        # Estrai e concatena lo stato nascosto finale del forward e backward pass
+        if self.encoder_rnn.bidirectional:
+            # h_n ha shape (num_layers * 2, B, hidden_size)
+            # Prendiamo l'ultimo layer: forward h_n[-2] e backward h_n[-1]
+            h_last_layer = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=-1)
         else:
-            h_in = h_last
-        z = self.to_latent(h_in)  # (B, latent_size)
+            # h_n ha shape (num_layers, B, hidden_size)
+            h_last_layer = h_n[-1, :, :]
+
+        # Proietta l'output dell'encoder nello spazio latente
+        z = self.to_latent(h_last_layer)  # (B, latent_size)
 
         # --- Decoder (teacher forcing) -----------------------------
         # concateniamo z e C a OGNI passo di tempo
-        z_rep = z.unsqueeze(1).repeat(1, T, 1)  # (B, T, latent)
-        dec_in = torch.cat([emb, z_rep, c_exp], dim=-1)
+        z_expanded = z.unsqueeze(1).repeat(1, T, 1)  # (B, T, latent)
+        # Usiamo lo stesso `emb` e `c_expanded` perché stiamo facendo teacher forcing
+        decoder_input = torch.cat([emb, z_expanded, c_expanded], dim=-1)
 
-        dec_out, _ = self.decoder_rnn(dec_in)  # (B, T, H)
+        dec_out, _ = self.decoder_rnn(decoder_input)  # (B, T, H)
         logits = self.output_linear(dec_out)  # (B, T, vocab)
         return z, logits, dec_out  # z restituito per debug
 
