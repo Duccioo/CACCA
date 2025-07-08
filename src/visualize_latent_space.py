@@ -122,10 +122,6 @@ def load_smiles_from_csv(file_path: str, filter_not_in_paper: bool=False) -> pd.
     return df
 
 
-
-
-
-
 ###############################################################################
 # Main routine
 ###############################################################################
@@ -204,7 +200,7 @@ def run(args: argparse.Namespace) -> None:
                 "chebyshev": dists["chebyshev"],
             }
         )
-        out_csv = Path(args.save_dir) / "distance.csv"
+        out_csv = Path(args.save_dir) / "distance_polymer2.csv"
         df.to_csv(out_csv, index=False)
         print(f"[INFO] Distance table saved to {out_csv.as_posix()}")
 
@@ -265,7 +261,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--ref_smiles",
         type=str,
-        default="OCCN(C(=O)C(c1ccccc1)c1ccccc1)",
+        default="N(CCO)[C](c1ccccc1)c2ccccc2",
         help="SMILES string to use as reference for distance computation",
     )
 

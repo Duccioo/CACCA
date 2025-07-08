@@ -202,7 +202,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prop_file",
         type=str,
-        default="dataset/ZINC_with_drugs/smiles_preprocessed_scale-zscore.csv",
+        default="dataset/ZINC_with_drugs/smiles_preprocessed_scale-None.csv",
         help="Path to SMILES+properties file",
     )
     # ------------------------------------------------------
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_dir",
         type=str,
-        default=pathlib.Path("saved_models", "model_nodec-bidir_v2"),
+        default=pathlib.Path("saved_models", "model_nodec-bidir_noscale"),
         help="Directory to save model info",
     )
 

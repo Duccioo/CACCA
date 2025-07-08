@@ -17,3 +17,7 @@ Etoricoxib,            "CC1=NC=C(C=C1)C2=C(C=C(C=N2)Cl)C3=CC=C(C=C3)S(=O)(=O)C",
 Nimesulide,            "CS(=O)(=O)NC1=C(C=C(C=C1)[N+](=O)[O-])OC2=CC=CC=C2",0
 Diclofenac,            "C1=CC=C(C(=C1)CC(=O)O)NC2=C(C=CC=C2Cl)Cl",0
 POLYMER 0,            "OCCN(C(=O)C(c1ccccc1)c1ccccc1)", 0
+POLYMER 1, "N(C(=O)C(c1ccccc1)c2ccccc2)CC", 0
+POLYMER 2, "N(CCO)[C](c1ccccc1)c2ccccc2",0
+POLYMER precrop, "c1ccc(cc1)C(c2ccccc2)C3=NCCO3", 0
+POLYMER 3, "OCCN[C](c1ccccc1)c1ccccc1",0
