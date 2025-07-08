@@ -243,7 +243,7 @@ def parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--save_dir", type=str, default="saved_models/model_nodec-bidir_v2", help="Directory containing model_*.pt checkpoints"
+        "--save_dir", type=str, default="saved_models/TEST_model_v3.5", help="Directory containing model_*.pt checkpoints"
     )
 
     parser.add_argument(

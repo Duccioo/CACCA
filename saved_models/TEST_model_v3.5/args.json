@@ -1,0 +1,15 @@
+{
+  "emb_size": 256,
+  "latent_size": 256,
+  "hidden_size": 512,
+  "n_rnn_layer": 3,
+  "batch_size": 128,
+  "max_seq_length": 120,
+  "training_percent": 0.75,
+  "seed": 69,
+  "prop_file": "dataset/ZINC_with_drugs/smiles_preprocessed_scale-zscore.csv",
+  "num_epochs": 5,
+  "lr": 0.0001,
+  "weight_decay": 1e-05,
+  "model_dir": "saved_models/TEST_model_v3.5"
+}

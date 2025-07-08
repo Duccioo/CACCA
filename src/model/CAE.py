@@ -1,17 +1,8 @@
-from typing import Callable, Union, Any
 import inspect
-
 import torch
 import torch.nn as nn
 
-
 class ConditionalAutoencoder(nn.Module):
-    """
-    Seq-to-seq auto-encoder condizionato su vettori di proprietà chimiche.
-    - Encoder: LSTM -> vettore latente deterministico
-    - Decoder: LSTM condizionato (latente + proprietà)
-    """
-
     def __init__(
         self,
         vocab_size,
@@ -21,46 +12,122 @@ class ConditionalAutoencoder(nn.Module):
         hidden_size=512,
         n_rnn_layer=3,
         encoder_biLSTM=True,
+        # Il decoder non può essere bidirezionale in modalità autoregressiva
         decoder_biLSTM=False,
     ):
-
         super().__init__()
         self.num_prop = num_prop
-        self.encoder_biLSTM = encoder_biLSTM
-        self.decoder_biLSTM = decoder_biLSTM
+        self.latent_size = latent_size
 
         # --- Embedding per token
         self.embedding = nn.Embedding(vocab_size, emb_size)
 
-        # --- Encoder -----------------------------------------------
-        encoder_hidden_size = hidden_size
+        # --- Encoder (processa solo SMILES) ----------------------------
         self.encoder_rnn = nn.LSTM(
-            input_size=emb_size + self.num_prop,
-            hidden_size=encoder_hidden_size,
+            input_size=emb_size, # Solo embedding
+            hidden_size=hidden_size,
             num_layers=n_rnn_layer,
             batch_first=True,
             bidirectional=encoder_biLSTM,
+            dropout=0.2 if n_rnn_layer > 1 else 0, # Dropout solo se ci sono più layer
         )
 
-        # --- Decoder -------------------------------------------------
-        # La dimensione dell'input per il layer latente dipende dalla bidirezionalità
-        encoder_output_size = encoder_hidden_size * 2 if encoder_biLSTM else encoder_hidden_size
+        encoder_output_size = hidden_size * (2 if encoder_biLSTM else 1)
+        
+        # Questo layer genera i parametri di modulazione
+        self.film_generator = nn.Linear(self.num_prop, encoder_output_size * 2)
+
+        # --- Latent Space Formation (fonde struttura e proprietà) ------
+        # # Layer per mappare [encoder_output, proprietà] -> z
+        # self.to_latent = nn.Sequential(
+        #     nn.Linear(encoder_output_size + num_prop, hidden_size),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_size, latent_size)
+        # )
+        # to_latent ora prende solo l'output modulato
         self.to_latent = nn.Linear(encoder_output_size, latent_size)
 
-        # La dimensione nascosta del decoder può essere diversa
-        decoder_hidden_size = encoder_output_size  # Esempio: la stessa dell'output dell'encoder
+        # --- Decoder (condizionato solo su z) ---------------------------
+        # Layer per preparare lo stato nascosto iniziale del decoder da z
+        self.latent_to_decoder_hidden = nn.Linear(latent_size, hidden_size * n_rnn_layer)
+
         self.decoder_rnn = nn.LSTM(
-            input_size=emb_size + latent_size + num_prop,
-            hidden_size=decoder_hidden_size,
+            input_size=emb_size, # Input: solo token precedente
+            hidden_size=hidden_size,
             num_layers=n_rnn_layer,
             batch_first=True,
-            bidirectional=decoder_biLSTM,
+            bidirectional=decoder_biLSTM, # Deve essere False per la generazione
+            dropout=0.2 if n_rnn_layer > 1 else 0,
         )
-        self.output_linear = nn.Linear(decoder_hidden_size, vocab_size)
+        self.output_linear = nn.Linear(hidden_size, vocab_size)
 
-        # Inizializzazione dei pesi
-        self._initialize_weights()
+        # --- Property Predictor (dallo spazio latente) -------------------
+        self.property_predictor = nn.Sequential(
+            nn.Linear(latent_size, hidden_size // 2),
+            nn.LayerNorm(hidden_size // 2), # <-- Aggiungi LayerNorm qui!
+            nn.ReLU(),
+            nn.Dropout(0.2), # <-- Aggiungi Dropout qui!
+            nn.Linear(hidden_size // 2, num_prop)
+        )
 
+        self._initialize_weights() # La tua funzione di init va benissimo
+
+    def encode(self, x, c, lengths):
+        # B = x.size(0)
+        emb = self.embedding(x)
+
+        # 1. Encoder processa solo SMILES
+        packed = nn.utils.rnn.pack_padded_sequence(
+            emb, lengths.cpu(), batch_first=True, enforce_sorted=False
+        )
+        _, (h_n, _) = self.encoder_rnn(packed)
+
+        # 2. Estrai l'output dell'encoder
+        if self.encoder_rnn.bidirectional:
+            h_last_layer = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=-1)
+        else:
+            h_last_layer = h_n[-1, :, :]
+            
+        film_params = self.film_generator(c)  # (B, 2 * encoder_output_size)
+        
+        # Dividi i parametri
+        gamma, beta = torch.chunk(film_params, 2, dim=-1) # Ognuno ha dim (B, encoder_output_size)
+
+        # Applica FiLM
+        modulated_h = gamma * h_last_layer + beta
+        
+        # Proietta nello spazio latente
+        z = self.to_latent(modulated_h)
+        
+        # 3. Fonda output encoder e proprietà per creare z
+        # latent_input = torch.cat([h_last_layer, c], dim=-1)
+        # z = self.to_latent(latent_input)
+        
+        return z
+
+    def decode(self, z, x_target, lengths):
+        # x_target è lo SMILES target per il teacher forcing
+        B, T = x_target.size()
+        emb = self.embedding(x_target)
+
+        # 1. Usa z per inizializzare lo stato nascosto del decoder
+        # Questo è un modo robusto per condizionare
+        hidden_flat = self.latent_to_decoder_hidden(z)
+        h_0 = hidden_flat.view(self.decoder_rnn.num_layers, B, self.decoder_rnn.hidden_size)
+        c_0 = torch.zeros_like(h_0) # Inizializza a zero il cell state
+        
+        # 2. Il decoder riceve solo la sequenza di embedding
+        # Non ha bisogno di z ad ogni step, perché è già nel suo stato iniziale
+        # Nota: dobbiamo passare le lunghezze anche qui se le sequenze sono paddate
+        packed = nn.utils.rnn.pack_padded_sequence(
+            emb, lengths.cpu(), batch_first=True, enforce_sorted=False
+        )
+        dec_out_packed, _ = self.decoder_rnn(packed, (h_0, c_0))
+        dec_out, _ = nn.utils.rnn.pad_packed_sequence(dec_out_packed, batch_first=True, total_length=T)
+
+        logits = self.output_linear(dec_out)
+        return logits
+    
     def _initialize_weights(self):
         """Inizializza i pesi dei layer lineari e degli embedding."""
         for m in self.modules():
@@ -71,49 +138,14 @@ class ConditionalAutoencoder(nn.Module):
             elif isinstance(m, nn.Embedding):
                 nn.init.xavier_uniform_(m.weight)
 
-    # ---------------------------------------------------------------
-    # Forward per training (teacher forcing: X_in, Y_target)
-    # ---------------------------------------------------------------
     def forward(self, x, c, lengths):
-        """
-        x : LongTensor  (B, T)  input sequence (con 'X' all'inizio)
-        c : FloatTensor (B, num_prop)
-        lengths : LongTensor (B,)  lunghezze reali (senza padding)
-        """
-        B, T = x.size()
-
-        # --- Encoder ------------------------------------------------
-        emb = self.embedding(x)  # (B, T, E)
-        c_expanded = c.unsqueeze(1).repeat(1, T, 1)  # (B, T, num_prop)
-        enc_inp = torch.cat([emb, c_expanded], dim=-1)  # (B, T, E+prop)
-
-        packed = nn.utils.rnn.pack_padded_sequence(
-            enc_inp, lengths.cpu(), batch_first=True, enforce_sorted=False
-        )
-        _, (h_n, c_n) = self.encoder_rnn(packed)  # h_n: (layers, B, H)
-
-        # Estrai e concatena lo stato nascosto finale del forward e backward pass
-        if self.encoder_rnn.bidirectional:
-            # h_n ha shape (num_layers * 2, B, hidden_size)
-            # Prendiamo l'ultimo layer: forward h_n[-2] e backward h_n[-1]
-            h_last_layer = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=-1)
-        else:
-            # h_n ha shape (num_layers, B, hidden_size)
-            h_last_layer = h_n[-1, :, :]
-
-        # Proietta l'output dell'encoder nello spazio latente
-        z = self.to_latent(h_last_layer)  # (B, latent_size)
-
-        # --- Decoder (teacher forcing) -----------------------------
-        # concateniamo z e C a OGNI passo di tempo
-        z_expanded = z.unsqueeze(1).repeat(1, T, 1)  # (B, T, latent)
-        # Usiamo lo stesso `emb` e `c_expanded` perché stiamo facendo teacher forcing
-        decoder_input = torch.cat([emb, z_expanded, c_expanded], dim=-1)
-
-        dec_out, _ = self.decoder_rnn(decoder_input)  # (B, T, H)
-        logits = self.output_linear(dec_out)  # (B, T, vocab)
-        return z, logits, dec_out  # z restituito per debug
-
+        # x: input per l'encoder E target per il decoder (es. SMILES completo)
+        z = self.encode(x, c, lengths)
+        logits = self.decode(z, x, lengths) # Teacher forcing
+        predicted_properties = self.property_predictor(z)
+        return z, logits, predicted_properties
+    
+    
     # ---------------------------------------------------------------
     # Sampling autoregressivo (greedy o multinomial)
     # ---------------------------------------------------------------
