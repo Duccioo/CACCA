@@ -193,26 +193,30 @@ if __name__ == "__main__":
     parser.add_argument("--latent_size", type=int, default=200, help="Latent vector size")
     parser.add_argument("--hidden_size", type=int, default=512, help="Size of RNN units")
     parser.add_argument("--n_rnn_layer", type=int, default=3, help="Number of RNN layers")
-
+    # ------------------------------------------------------
     parser.add_argument("--batch_size", type=int, default=128, help="Batch size")
     parser.add_argument("--max_seq_length", type=int, default=20, help="Maximum SMILES sequence length")
     parser.add_argument("--training_percent", type=float, default=0.75, help="Training set percentage")
     parser.add_argument("--seed", type=int, default=69, help="Random seed for reproducibility")
+    # ------------------------------------------------------
     parser.add_argument(
         "--prop_file",
         type=str,
         default="dataset/ZINC_with_drugs/smiles_preprocessed_scale-zscore.csv",
         help="Path to SMILES+properties file",
     )
+    # ------------------------------------------------------
     parser.add_argument("--num_epochs", type=int, default=10, help="Number of training epochs")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="Weight decay for optimizer")
+    # ------------------------------------------------------
     parser.add_argument(
         "--model_dir",
         type=str,
         default=pathlib.Path("saved_models", "esempio_modello_v2"),
         help="Directory to save model info",
     )
+
     args = parser.parse_args()
 
     main(args)
