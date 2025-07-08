@@ -53,7 +53,7 @@ You can specify the scaling method (`zscore` or `minmax`). Using a scaler is hig
 ▶️ **Example command:**
 
 ```bash
-python preprocess_data.py --input_file dataset/ZINC/smiles.txt --scale zscore
+python preprocess_data.py --input-file dataset/ZINC_base/smiles.txt --scale zscore
 ```
 
 This will create a new preprocessed file, ready for the model! 📄➡️📈
@@ -63,7 +63,7 @@ This will create a new preprocessed file, ready for the model! 📄➡️📈
 
 
 ### 🧠 Step 2: Train the Model
-
+...
 
 
 ## What's New?
@@ -73,7 +73,9 @@ Allora il codice l'ho ritoccato abbastanza.
 
 - Ho aggiunto qualche ottimizzazione direttamente dal santo Karpathy, come il `torch.compile` che dovrebbe velocizzare il training del modello, o adamw optimizer che è più veloce di adam.
 
-- Il codice adesso è più organizzato
+- ho cambiato il latent size da 200 a 256, che è un valore più comune (regola del 2^n).
+
+- Il codice adesso è più organizzato e ho pulito anche qualche bug (tipo che nel modello si stava scambiando il penultimo e ultimo output del encoding del biLSTM...)
 
 ---
 

@@ -12,6 +12,7 @@ from rdkit.Chem.rdMolDescriptors import CalcNumHBD, CalcNumHBA, CalcTPSA
 
 from tqdm import tqdm
 import requests
+import json
 
 
 ZINC_DOWNLOAD_URL = "https://github.com/jaechanglim/CVAE/blob/master/smiles.txt?raw=true"
@@ -138,10 +139,10 @@ def run_preprocessing(
     # Scala le proprietà se richiesto
     if scale_method:
         scaled_props, scale_metric = scale_props_list(props_only, method=scale_method)
-        # salvo le metriche di scaling per eventuali usi futuri in un file .txt
-        with open(save_path.parent / (save_path.stem + "_scaling_metrics.txt"), "w") as f:
-            f.write(f"Scaling method: {scale_method}\n")
-            f.write(f"Scale metrics: {scale_metric}\n")
+            # salvo le metriche di scaling per eventuali usi futuri in un file .json
+        with open(save_path.parent / (save_path.stem + "_scaling_metrics.json"), "w") as f:
+            scale_metric_serializable = [arr.tolist() for arr in scale_metric]
+            json.dump({"Scaling method": scale_method, "Scale metrics": scale_metric_serializable}, f, indent=4)
     else:
         scaled_props = props_only
 

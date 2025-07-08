@@ -9,11 +9,11 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors
 
 from model.CAE import ConditionalAutoencoder
-from utils import decode_smiles_from_indexes
+from utils.utils import decode_smiles_from_indexes
 
 
 def load_vocab(save_dir: Path):
-    vocab_path = Path(save_dir) / "vocab.pkl"
+    vocab_path = Path(save_dir)
     if not vocab_path.exists():
         raise FileNotFoundError(f"{vocab_path} non trovato – hai salvato il vocab durante il training?")
     with vocab_path.open("rb") as f:
