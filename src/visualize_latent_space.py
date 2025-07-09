@@ -38,7 +38,12 @@ def load_model_from_folder(folder, num_prop: int = 5) -> ConditionalAutoencoder:
     ckpts = [p for p in Path(folder).glob("model_*.pt")]
     if not ckpts:
         raise FileNotFoundError(f"No checkpoints found in {folder!s}")
-    latest = max(ckpts, key=lambda p: int(p.stem.split("_")[1]))
+    # Cerca un file che termina con 'best.pt'
+    best_ckpt = [p for p in ckpts if p.stem.endswith("best")]
+    if best_ckpt:
+        latest = best_ckpt[0]
+    else:
+        latest = max(ckpts, key=lambda p: int(p.stem.split("_")[1]))
     
     params = Path(folder) / "args.json"
     if params.exists():
@@ -243,7 +248,7 @@ def parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--save_dir", type=str, default="saved_models/TEST_model_v3.5", help="Directory containing model_*.pt checkpoints"
+        "--save_dir", type=str, default="saved_models/model_FCK_v3.7", help="Directory containing model_*.pt checkpoints"
     )
 
     parser.add_argument(

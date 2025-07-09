@@ -29,7 +29,7 @@ class ConditionalAutoencoder(nn.Module):
             num_layers=n_rnn_layer,
             batch_first=True,
             bidirectional=encoder_biLSTM,
-            dropout=0.2 if n_rnn_layer > 1 else 0, # Dropout solo se ci sono più layer
+            # dropout=0.2 if n_rnn_layer > 1 else 0,
         )
 
         encoder_output_size = hidden_size * (2 if encoder_biLSTM else 1)
@@ -57,7 +57,7 @@ class ConditionalAutoencoder(nn.Module):
             num_layers=n_rnn_layer,
             batch_first=True,
             bidirectional=decoder_biLSTM, # Deve essere False per la generazione
-            dropout=0.2 if n_rnn_layer > 1 else 0,
+            # dropout=0.2 if n_rnn_layer > 1 else 0,
         )
         self.output_linear = nn.Linear(hidden_size, vocab_size)
 
@@ -65,15 +65,14 @@ class ConditionalAutoencoder(nn.Module):
         self.property_predictor = nn.Sequential(
             nn.Linear(latent_size, hidden_size // 2),
             nn.LayerNorm(hidden_size // 2), # <-- Aggiungi LayerNorm qui!
-            nn.ReLU(),
-            nn.Dropout(0.2), # <-- Aggiungi Dropout qui!
+            nn.GELU(),
+            nn.Dropout(0.25), # <-- Aggiungi Dropout qui!
             nn.Linear(hidden_size // 2, num_prop)
         )
 
         self._initialize_weights() # La tua funzione di init va benissimo
 
     def encode(self, x, c, lengths):
-        # B = x.size(0)
         emb = self.embedding(x)
 
         # 1. Encoder processa solo SMILES

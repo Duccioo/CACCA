@@ -18,7 +18,7 @@ import json
 
 
 # Seed
-def set_seed(seed=69, hard=False):
+def set_seed(seed=69, hard=False, torch_deterministic=False):
     os.environ["PYTHONHASHSEED"] = str(seed)  # facoltativo
 
     random.seed(seed)
@@ -27,7 +27,7 @@ def set_seed(seed=69, hard=False):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.deterministic = torch_deterministic
     torch.backends.cudnn.benchmark = False
 
     if hard:
@@ -215,21 +215,23 @@ def main(args):
     optimizer = model.configure_optimizers(weight_decay=weight_decay, learning_rate=lr)
     criterion_recon = nn.CrossEntropyLoss(ignore_index=pad_idx)
     criterion_prop = nn.MSELoss()
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
 
     print(f"Number of parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
     # Initialize lists to store losses
     metrics_history = []
+    best_loss = float("inf")
 
     progress_bar = tqdm.tqdm(range(num_epochs), desc="Training", unit="epoch", position=1)
     for epoch in progress_bar:
         
-        lambda_prop = min(1.0, epoch/20) * 0.1
+        lambda_prop = min(1.0, epoch/30) * 0.01
+        # lambda_prop = 0.03 if epoch >= 3 else 0.0 # Warm-up phase 
         start = time.time()
 
         # Training
-        train_metrics = train_one_epoch(model, train_loader, optimizer, len(processed_data.vocab), criterion_recon, criterion_prop, pad_idx, scheduler, lambda_prop)
+        train_metrics = train_one_epoch(model, train_loader, optimizer, len(processed_data.vocab), criterion_recon, criterion_prop, pad_idx, None, lambda_prop)
 
         # Evaluation
         test_metrics = evaluate(model, test_loader, len(processed_data.vocab), criterion_recon, criterion_prop, pad_idx)
@@ -249,6 +251,12 @@ def main(args):
             "time_s": end - start
         }
         metrics_history.append(epoch_log)
+        
+        if test_metrics["ce"] < best_loss:
+            best_loss = test_metrics["ce"]
+            # Save the best model checkpoint
+            model_path_best = os.path.join(model_path, "model_best.pt")
+            model.save(model_path_best)
 
         if epoch == 0:
             header = " | ".join(f"{k:<10}" for k in epoch_log.keys())
@@ -259,9 +267,10 @@ def main(args):
         tqdm.tqdm.write(log_line)
 
 
-        # Save model checkpoint
-        model_path_checkpoint = os.path.join(model_path, f"model_{epoch}.pt")
-        model.save(model_path_checkpoint)
+        # Save model checkpoint each 5 epochs
+        if (epoch + 1) % 5 == 0 or epoch == num_epochs - 1:
+            model_path_checkpoint = os.path.join(model_path, f"model_{epoch}.pt")
+            model.save(model_path_checkpoint)
 
         # Save losses to JSON after each epoch
         with open(os.path.join(model_path, "losses.json"), "w") as f:
@@ -271,13 +280,13 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--emb_size", type=int, default=256, help="Emb size")
-    parser.add_argument("--latent_size", type=int, default=128, help="Latent vector size")
-    parser.add_argument("--hidden_size", type=int, default=768, help="Size of RNN units")
+    parser.add_argument("--latent_size", type=int, default=256, help="Latent vector size")
+    parser.add_argument("--hidden_size", type=int, default=512, help="Size of RNN units")
     parser.add_argument("--n_rnn_layer", type=int, default=3, help="Number of RNN layers")
     # ------------------------------------------------------
     parser.add_argument("--batch_size", type=int, default=256, help="Batch size")
     parser.add_argument("--max_seq_length", type=int, default=120, help="Maximum SMILES sequence length")
-    parser.add_argument("--training_percent", type=float, default=0.75, help="Training set percentage")
+    parser.add_argument("--training_percent", type=float, default=0.80, help="Training set percentage")
     parser.add_argument("--seed", type=int, default=69, help="Random seed for reproducibility")
     # ------------------------------------------------------
     parser.add_argument(
@@ -288,13 +297,13 @@ if __name__ == "__main__":
     )
     # ------------------------------------------------------
     parser.add_argument("--num_epochs", type=int, default=100, help="Number of training epochs")
-    parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate")
-    parser.add_argument("--weight_decay", type=float, default=1e-2, help="Weight decay for optimizer")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--weight_decay", type=float, default=1e-4, help="Weight decay for optimizer")
     # ------------------------------------------------------
     parser.add_argument(
         "--model_dir",
         type=str,
-        default=pathlib.Path("saved_models", "model_v3.5"),
+        default=pathlib.Path("saved_models", "model_FCK_v3.8"),
         help="Directory to save model info",
     )
 
