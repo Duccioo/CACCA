@@ -18,14 +18,14 @@ from scipy.spatial import distance
 
 
 # ---
-from model.CAE import ConditionalAutoencoder 
+from model.CAE import ConditionalAutoencoder , OLDConditionalAutoencoder
 from generatore2 import load_vocab
 
 
 PAD, EOS, SOS = "_", "E", "X"  # special tokens expected by the model
 
 
-def load_model_from_folder(folder, num_prop: int = 5) -> ConditionalAutoencoder:
+def load_model_from_folder(folder, num_prop: int = 5, num_check = "best") -> ConditionalAutoencoder:
     """Load the latest model checkpoint from a given folder."""
     Path(folder).mkdir(parents=True, exist_ok=True)
     
@@ -40,8 +40,14 @@ def load_model_from_folder(folder, num_prop: int = 5) -> ConditionalAutoencoder:
         raise FileNotFoundError(f"No checkpoints found in {folder!s}")
     # Cerca un file che termina con 'best.pt'
     best_ckpt = [p for p in ckpts if p.stem.endswith("best")]
-    if best_ckpt:
+    if best_ckpt and num_check == "best":
         latest = best_ckpt[0]
+    elif isinstance(num_check, int):    
+        latest = [p for p in ckpts if p.stem.endswith(str(num_check))]
+        if latest:
+            latest = latest[0]
+        else:
+            raise FileNotFoundError(f"No checkpoint ending with '{num_check}' found in {folder!s}")
     else:
         latest = max(ckpts, key=lambda p: int(p.stem.split("_")[1]))
     
@@ -49,9 +55,13 @@ def load_model_from_folder(folder, num_prop: int = 5) -> ConditionalAutoencoder:
     if params.exists():
         with open(params) as f:
             train_args = argparse.Namespace(**json.load(f))
-    model = ConditionalAutoencoder(len(vocab), num_prop, train_args.latent_size, train_args.emb_size, train_args.hidden_size, train_args.n_rnn_layer)
-    model.load_state_dict(torch.load(latest, map_location=torch.device("cpu")))
-    
+    try:
+        print(f"[INFO] Loading model from {latest.as_posix()} …")
+        model = ConditionalAutoencoder(len(vocab), num_prop, train_args.latent_size, train_args.emb_size, train_args.hidden_size, train_args.n_rnn_layer)
+        model.load_state_dict(torch.load(latest, map_location=torch.device("cpu")))
+    except:
+        model = OLDConditionalAutoencoder(len(vocab), num_prop, train_args.latent_size, train_args.emb_size, train_args.hidden_size, train_args.n_rnn_layer)
+        model.load_state_dict(torch.load(latest, map_location=torch.device("cpu")))
     return model, vocab, train_args
 
 
@@ -213,7 +223,7 @@ def run(args: argparse.Namespace) -> None:
     # 4. UMAP dimensionality reduction
     # ------------------------------------------------------------------
     print("[INFO] Running UMAP …")
-    reducer = umap.UMAP(n_neighbors=args.n_neighbors, min_dist=args.min_dist)
+    reducer = umap.UMAP(n_neighbors=args.n_neighbors, min_dist=args.min_dist, random_state=train_args.seed)
     embedding = reducer.fit_transform(latent)
 
     # ------------------------------------------------------------------
@@ -248,7 +258,7 @@ def parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--save_dir", type=str, default="saved_models/model_FCK_v3.7", help="Directory containing model_*.pt checkpoints"
+        "--save_dir", type=str, default="saved_models/model_preCondRNN_v4.2", help="Directory containing model_*.pt checkpoints"
     )
 
     parser.add_argument(
@@ -266,7 +276,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--ref_smiles",
         type=str,
-        default="N(CCO)[C](c1ccccc1)c2ccccc2",
+        default="OCCN(C(=O)C(c1ccccc1)c1ccccc1)",
         help="SMILES string to use as reference for distance computation",
     )
 
