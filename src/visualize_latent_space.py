@@ -292,7 +292,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--save_dir",
         type=str,
-        default="saved_models/model_preCondRNN_v4.2",
+        default="saved_models/model_CVAE_v5.1",
         help="Directory containing model_*.pt checkpoints",
     )
 
