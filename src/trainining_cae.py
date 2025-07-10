@@ -12,7 +12,7 @@ import tqdm
 import pathlib
 
 # ---
-from model.CAE import ConditionalAutoencoder
+from model.CAE import ConditionalAutoencoder, CVAE
 from utils.data_utils import load_preprocessed_data, SmilesDataset
 import json
 
@@ -34,54 +34,70 @@ def set_seed(seed=69, hard=False, torch_deterministic=False):
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"  # o :4096:8 prima di avviare Python
         # Fa fallire il run se usi un'operazione non deterministica
         torch.use_deterministic_algorithms(True)
-        
 
 
-def train_one_epoch(model, train_loader, optimizer, vocab_size, criterion_recon, criterion_prop, pad_idx, scheduler=None, lambda_prop=0.5):
+def train_one_epoch(
+    model,
+    model_type,
+    train_loader,
+    optimizer,
+    vocab_size,
+    criterion_recon,
+    criterion_prop,
+    pad_idx,
+    scheduler=None,
+    lambda_prop=0.5,
+    lambda_kl=0.01,
+):
     model.train()
-    
+
     epoch_ce_losses = []
     epoch_mse_losses = []
     epoch_mae_losses = []
     epoch_accuracies = []
 
     device = next(model.parameters()).device
-    
+
     for data in train_loader:
         optimizer.zero_grad()
-        
+
         _, logits, c_pred = model(
             data["input"].to(device), data["properties"].to(device), data["length"].to(device)
         )
-        
+
         target_tokens = data["output"].to(device)
         target_props = data["properties"].to(device)
 
         # Calcolo delle loss
         loss_recon = criterion_recon(logits.view(-1, vocab_size), target_tokens.view(-1))
         loss_prop_mse = criterion_prop(c_pred, target_props)
-        
+
         # Loss totale
-        total_loss = loss_recon + lambda_prop * loss_prop_mse
-        
+        if model_type == "CVAE":
+            # Calcolo della loss KL
+            loss_kl = model.kl_loss()
+            total_loss = loss_recon + lambda_prop * loss_prop_mse + lambda_kl * loss_kl
+        else:
+            total_loss = loss_recon + lambda_prop * loss_prop_mse
+
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         if scheduler is not None:
             scheduler.step()
-        
+
         # Calcolo metriche addizionali
         with torch.no_grad():
             # MAE
             loss_prop_mae = torch.nn.functional.l1_loss(c_pred, target_props)
-            
+
             # Accuracy
             preds = logits.argmax(dim=-1)
-            mask = (target_tokens != pad_idx)
+            mask = target_tokens != pad_idx
             correct_preds = (preds[mask] == target_tokens[mask]).sum().item()
             total_tokens = mask.sum().item()
             accuracy = correct_preds / total_tokens if total_tokens > 0 else 0
-            
+
             epoch_ce_losses.append(loss_recon.item())
             epoch_mse_losses.append(loss_prop_mse.item())
             epoch_mae_losses.append(loss_prop_mae.item())
@@ -91,13 +107,13 @@ def train_one_epoch(model, train_loader, optimizer, vocab_size, criterion_recon,
         "ce": np.mean(epoch_ce_losses),
         "mse": np.mean(epoch_mse_losses),
         "mae": np.mean(epoch_mae_losses),
-        "acc": np.mean(epoch_accuracies)
+        "acc": np.mean(epoch_accuracies),
     }
 
 
 def evaluate(model, test_loader, vocab_size, criterion_recon, criterion_prop, pad_idx):
     model.eval()
-    
+
     epoch_ce_losses = []
     epoch_mse_losses = []
     epoch_mae_losses = []
@@ -110,23 +126,23 @@ def evaluate(model, test_loader, vocab_size, criterion_recon, criterion_prop, pa
             _, logits, c_pred = model(
                 data["input"].to(device), data["properties"].to(device), data["length"].to(device)
             )
-            
+
             target_tokens = data["output"].to(device)
             target_props = data["properties"].to(device)
 
             # Calcolo delle loss
             loss_recon = criterion_recon(logits.view(-1, vocab_size), target_tokens.view(-1))
             loss_prop_mse = criterion_prop(c_pred, target_props)
-            
+
             # Calcolo metriche addizionali
             loss_prop_mae = torch.nn.functional.l1_loss(c_pred, target_props)
-            
+
             preds = logits.argmax(dim=-1)
-            mask = (target_tokens != pad_idx)
+            mask = target_tokens != pad_idx
             correct_preds = (preds[mask] == target_tokens[mask]).sum().item()
             total_tokens = mask.sum().item()
             accuracy = correct_preds / total_tokens if total_tokens > 0 else 0
-            
+
             epoch_ce_losses.append(loss_recon.item())
             epoch_mse_losses.append(loss_prop_mse.item())
             epoch_mae_losses.append(loss_prop_mae.item())
@@ -136,7 +152,7 @@ def evaluate(model, test_loader, vocab_size, criterion_recon, criterion_prop, pa
         "ce": np.mean(epoch_ce_losses),
         "mse": np.mean(epoch_mse_losses),
         "mae": np.mean(epoch_mae_losses),
-        "acc": np.mean(epoch_accuracies)
+        "acc": np.mean(epoch_accuracies),
     }
 
 
@@ -186,8 +202,22 @@ def main(args):
     )
 
     # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True, persistent_workers=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True, persistent_workers=True)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True,
+    )
 
     # Save vocab for generation
     vocab_data = {"char": processed_data.chars, "vocab": processed_data.vocab}
@@ -197,14 +227,24 @@ def main(args):
         pickle.dump(vocab_data, f)
 
     # --- Model setup ---
-    model = ConditionalAutoencoder(
-        len(processed_data.vocab),
-        num_prop=processed_data.properties.shape[1],
-        latent_size=latent_size,
-        emb_size=emb_size,
-        hidden_size=hidden_size,
-        n_rnn_layer=n_rnn_layer,
-    ).to(device)
+    if args.model_type == "CVAE":
+        model = CVAE(
+            len(processed_data.vocab),
+            num_prop=processed_data.properties.shape[1],
+            latent_size=latent_size,
+            emb_size=emb_size,
+            hidden_size=hidden_size,
+            n_rnn_layer=n_rnn_layer,
+        ).to(device)
+    else:
+        model = ConditionalAutoencoder(
+            len(processed_data.vocab),
+            num_prop=processed_data.properties.shape[1],
+            latent_size=latent_size,
+            emb_size=emb_size,
+            hidden_size=hidden_size,
+            n_rnn_layer=n_rnn_layer,
+        ).to(device)
     # torch.compile(model)  # Compilazione JIT (opzionale)
 
     # NEW ▶︎ se sono presenti >1 GPU, usa DataParallel
@@ -225,16 +265,32 @@ def main(args):
 
     progress_bar = tqdm.tqdm(range(num_epochs), desc="Training", unit="epoch", position=1)
     for epoch in progress_bar:
-        
-        lambda_prop = min(1.0, epoch/30) * 0.01
-        # lambda_prop = 0.03 if epoch >= 3 else 0.0 # Warm-up phase 
+
+        lambda_prop = min(1.0, epoch / 30) * 0.01
+        # lambda_prop = 0.03 if epoch >= 3 else 0.0 # Warm-up phase
+        lambda_kl = min(1.0, epoch / 30) * 0.05
+
         start = time.time()
 
         # Training
-        train_metrics = train_one_epoch(model, train_loader, optimizer, len(processed_data.vocab), criterion_recon, criterion_prop, pad_idx, None, lambda_prop)
+        train_metrics = train_one_epoch(
+            model,
+            args.model_type,
+            train_loader,
+            optimizer,
+            len(processed_data.vocab),
+            criterion_recon,
+            criterion_prop,
+            pad_idx,
+            None,
+            lambda_prop,
+            lambda_kl,
+        )
 
         # Evaluation
-        test_metrics = evaluate(model, test_loader, len(processed_data.vocab), criterion_recon, criterion_prop, pad_idx)
+        test_metrics = evaluate(
+            model, test_loader, len(processed_data.vocab), criterion_recon, criterion_prop, pad_idx
+        )
         end = time.time()
 
         # Log metrics
@@ -248,10 +304,10 @@ def main(args):
             "mse_test": test_metrics["mse"],
             "mae_test": test_metrics["mae"],
             "acc_test": test_metrics["acc"],
-            "time_s": end - start
+            "time_s": end - start,
         }
         metrics_history.append(epoch_log)
-        
+
         if test_metrics["ce"] < best_loss:
             best_loss = test_metrics["ce"]
             # Save the best model checkpoint
@@ -262,10 +318,11 @@ def main(args):
             header = " | ".join(f"{k:<10}" for k in epoch_log.keys())
             tqdm.tqdm.write(header)
             tqdm.tqdm.write("-" * len(header))
-        
-        log_line = " | ".join(f"{v:<10.4f}" if isinstance(v, float) else f"{v:<10}" for v in epoch_log.values())
-        tqdm.tqdm.write(log_line)
 
+        log_line = " | ".join(
+            f"{v:<10.4f}" if isinstance(v, float) else f"{v:<10}" for v in epoch_log.values()
+        )
+        tqdm.tqdm.write(log_line)
 
         # Save model checkpoint each 5 epochs
         if (epoch + 1) % 5 == 0 or epoch == num_epochs - 1:
@@ -279,6 +336,9 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--model_type", type=str, choices=["CVAE", "CAE"], default="CVAE", help="Model type: CVAE or CAE"
+    )
     parser.add_argument("--emb_size", type=int, default=256, help="Emb size")
     parser.add_argument("--latent_size", type=int, default=200, help="Latent vector size")
     parser.add_argument("--hidden_size", type=int, default=512, help="Size of RNN units")
@@ -303,7 +363,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_dir",
         type=str,
-        default=pathlib.Path("saved_models", "model_preCondRNN_v4.2"),
+        default=pathlib.Path("saved_models", "model_CVAE_v5"),
         help="Directory to save model info",
     )
 
