@@ -266,9 +266,9 @@ def main(args):
     progress_bar = tqdm.tqdm(range(num_epochs), desc="Training", unit="epoch", position=1)
     for epoch in progress_bar:
 
-        lambda_prop = min(1.0, epoch / 30) * 0.01
+        lambda_prop = min(1.0, epoch / 30) * 0.05
         # lambda_prop = 0.03 if epoch >= 3 else 0.0 # Warm-up phase
-        lambda_kl = min(1.0, epoch / 30) * 0.05
+        lambda_kl = min(1.0, epoch / 50) * 0.1
 
         start = time.time()
 
@@ -363,7 +363,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_dir",
         type=str,
-        default=pathlib.Path("saved_models", "model_CVAE_v5"),
+        default=pathlib.Path("saved_models", "model_CVAE_v5.1"),
         help="Directory to save model info",
     )
 

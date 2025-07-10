@@ -18,23 +18,23 @@ from scipy.spatial import distance
 
 
 # ---
-from model.CAE import ConditionalAutoencoder , OLDConditionalAutoencoder
+from model.CAE import ConditionalAutoencoder, OLDConditionalAutoencoder, CVAE
 from generatore2 import load_vocab
 
 
 PAD, EOS, SOS = "_", "E", "X"  # special tokens expected by the model
 
 
-def load_model_from_folder(folder, num_prop: int = 5, num_check = "best") -> ConditionalAutoencoder:
+def load_model_from_folder(folder, num_prop: int = 5, num_check="best") -> ConditionalAutoencoder:
     """Load the latest model checkpoint from a given folder."""
     Path(folder).mkdir(parents=True, exist_ok=True)
-    
+
     # load vocab.pkl file
     vocab_file = Path(folder) / "vocab.pkl"
     print(f"Loading vocabulary from {vocab_file} …")
     if vocab_file.exists():
         char, vocab, int_to_char, pad_idx, sos_idx, eos_idx = load_vocab(vocab_file)
-        
+
     ckpts = [p for p in Path(folder).glob("model_*.pt")]
     if not ckpts:
         raise FileNotFoundError(f"No checkpoints found in {folder!s}")
@@ -42,7 +42,7 @@ def load_model_from_folder(folder, num_prop: int = 5, num_check = "best") -> Con
     best_ckpt = [p for p in ckpts if p.stem.endswith("best")]
     if best_ckpt and num_check == "best":
         latest = best_ckpt[0]
-    elif isinstance(num_check, int):    
+    elif isinstance(num_check, int):
         latest = [p for p in ckpts if p.stem.endswith(str(num_check))]
         if latest:
             latest = latest[0]
@@ -50,27 +50,54 @@ def load_model_from_folder(folder, num_prop: int = 5, num_check = "best") -> Con
             raise FileNotFoundError(f"No checkpoint ending with '{num_check}' found in {folder!s}")
     else:
         latest = max(ckpts, key=lambda p: int(p.stem.split("_")[1]))
-    
+
     params = Path(folder) / "args.json"
     if params.exists():
         with open(params) as f:
             train_args = argparse.Namespace(**json.load(f))
     try:
-        print(f"[INFO] Loading model from {latest.as_posix()} …")
-        model = ConditionalAutoencoder(len(vocab), num_prop, train_args.latent_size, train_args.emb_size, train_args.hidden_size, train_args.n_rnn_layer)
-        model.load_state_dict(torch.load(latest, map_location=torch.device("cpu")))
+        print(f"[INFO] Loading {train_args.model_type} model from {latest.as_posix()} …")
+        if train_args.model_type == "CVAE":
+            model = CVAE(
+                len(vocab),
+                num_prop,
+                train_args.latent_size,
+                train_args.emb_size,
+                train_args.hidden_size,
+                train_args.n_rnn_layer,
+            )
+        else:
+            model = ConditionalAutoencoder(
+                len(vocab),
+                num_prop,
+                train_args.latent_size,
+                train_args.emb_size,
+                train_args.hidden_size,
+                train_args.n_rnn_layer,
+            )
     except:
-        model = OLDConditionalAutoencoder(len(vocab), num_prop, train_args.latent_size, train_args.emb_size, train_args.hidden_size, train_args.n_rnn_layer)
-        model.load_state_dict(torch.load(latest, map_location=torch.device("cpu")))
+        model = OLDConditionalAutoencoder(
+            len(vocab),
+            num_prop,
+            train_args.latent_size,
+            train_args.emb_size,
+            train_args.hidden_size,
+            train_args.n_rnn_layer,
+        )
+
+    model.load_state_dict(torch.load(latest, map_location=torch.device("cpu")))
+
     return model, vocab, train_args
 
 
 # Sostituisci anche questa funzione
 def smiles_dict_to_tensor(
-    smiles_df: pd.DataFrame, # MODIFICA: Accetta un DataFrame
+    smiles_df: pd.DataFrame,  # MODIFICA: Accetta un DataFrame
     char2idx: dict[str, int],
     seq_length: int,
-) -> Tuple[torch.LongTensor, torch.FloatTensor, torch.LongTensor, np.ndarray, List[str], List[str], List[int]]: # MODIFICA: Aggiunto List[int] per i valori di 'PAPER'
+) -> Tuple[
+    torch.LongTensor, torch.FloatTensor, torch.LongTensor, np.ndarray, List[str], List[str], List[int]
+]:  # MODIFICA: Aggiunto List[int] per i valori di 'PAPER'
     """
     MODIFICA: Processa un DataFrame invece di un dizionario.
     Restituisce anche i valori della colonna 'PAPER'.
@@ -82,7 +109,7 @@ def smiles_dict_to_tensor(
         name = row.MOL
         smi = row.SMILES
         paper_status = row.PAPER
-        
+
         mol = Chem.MolFromSmiles(smi)
         if mol is None or len(smi) >= seq_length - 2:
             print(f"[WARN] Skipping invalid or too‑long SMILES: {smi} (name: {name})")
@@ -107,7 +134,7 @@ def smiles_dict_to_tensor(
         ls.append(len(token_ids) + 1)  # +1 for SOS
         valid_smiles.append(smi)
         names.append(name)
-        paper_vals.append(paper_status) # MODIFICA: Salva il valore di PAPER
+        paper_vals.append(paper_status)  # MODIFICA: Salva il valore di PAPER
 
     if not xs:
         raise RuntimeError("No valid SMILES to process – aborting.")
@@ -119,11 +146,12 @@ def smiles_dict_to_tensor(
         np.array(logp_vals, dtype=np.float32),
         valid_smiles,
         names,
-        paper_vals, # MODIFICA: Restituisce i valori di PAPER
+        paper_vals,  # MODIFICA: Restituisce i valori di PAPER
     )
 
+
 # Sostituisci questa funzione
-def load_smiles_from_csv(file_path: str, filter_not_in_paper: bool=False) -> pd.DataFrame:
+def load_smiles_from_csv(file_path: str, filter_not_in_paper: bool = False) -> pd.DataFrame:
     """
     MODIFICA: Ora restituisce un DataFrame di pandas invece di un dizionario.
     Questo permette di mantenere tutte le informazioni necessarie (MOL, SMILES, PAPER).
@@ -132,14 +160,15 @@ def load_smiles_from_csv(file_path: str, filter_not_in_paper: bool=False) -> pd.
     df = pd.read_csv(smiles_file, skipinitialspace=True)
 
     if filter_not_in_paper:
-        df = df[df['PAPER'] == 1].copy() # .copy() per evitare SettingWithCopyWarning
-    
+        df = df[df["PAPER"] == 1].copy()  # .copy() per evitare SettingWithCopyWarning
+
     return df
 
 
 ###############################################################################
 # Main routine
 ###############################################################################
+
 
 # E infine, sostituisci la funzione principale run()
 def run(args: argparse.Namespace) -> None:
@@ -149,17 +178,17 @@ def run(args: argparse.Namespace) -> None:
     model.to(device)
     model.eval()  # set to evaluation mode
 
-    
     # ------------------------------------------------------------------
     # 3. Pre‑process SMILES and encode
     # ------------------------------------------------------------------
     # MODIFICA: Ora carichiamo il DataFrame
     molecules_df = load_smiles_from_csv("assets/mol_test.csv")
     # MODIFICA: Passiamo il DataFrame e riceviamo anche i valori di 'paper'
-    x, c, l, logp_vals, valid_smiles, names, paper_vals = smiles_dict_to_tensor(molecules_df, vocab, train_args.max_seq_length)
+    x, c, l, logp_vals, valid_smiles, names, paper_vals = smiles_dict_to_tensor(
+        molecules_df, vocab, train_args.max_seq_length
+    )
     x, c, l = x.to(device), c.to(device), l.to(device)
-    
-    
+
     # load dataset scale metric from json file
     scale_file = Path(args.smiles_file)
     if scale_file.exists():
@@ -167,7 +196,7 @@ def run(args: argparse.Namespace) -> None:
             scale_data = json.load(f)
             print(f"[INFO] Loaded scaling metrics from {scale_file.as_posix()}")
             if scale_data["Scaling method"] == "zscore":
-                scale_metrics = scale_data['Scale metrics']
+                scale_metrics = scale_data["Scale metrics"]
                 mean = torch.tensor(scale_metrics[0], device=device, dtype=torch.float32)
                 std = torch.tensor(scale_metrics[1], device=device, dtype=torch.float32)
                 c = (c - mean) / std
@@ -175,8 +204,7 @@ def run(args: argparse.Namespace) -> None:
     with torch.no_grad():
         latent = model(x, c, l)[0].cpu().numpy()
         print(f"[INFO] Encoded {latent.shape[0]} molecules → latent_dim={latent.shape[1]}")
-    
-    
+
     # ------------------------------------------------------------------
     # 4. Optional: compute distances from reference SMILES
     # ------------------------------------------------------------------
@@ -199,13 +227,13 @@ def run(args: argparse.Namespace) -> None:
             "mahalanobis": [distance.mahalanobis(ref_embedding, z, VI) for z in latent],
             "chebyshev": [distance.chebyshev(ref_embedding, z) for z in latent],
         }
-        
+
         # MODIFICA 1: Aggiunta della colonna 'PAPER' al DataFrame di output
         df = pd.DataFrame(
             {
                 "Name": names,
                 "SMILES": valid_smiles,
-                "PAPER": paper_vals, # Ecco la nuova colonna
+                "PAPER": paper_vals,  # Ecco la nuova colonna
                 "logP": logp_vals,
                 "euclidean": dists["euclidean"],
                 "cosine": dists["cosine"],
@@ -241,7 +269,11 @@ def run(args: argparse.Namespace) -> None:
         # MODIFICA 2: Annotazione con il nome ('MOL') invece che con lo SMILES
         for i, name in enumerate(names):
             plt.annotate(
-                name, (embedding[i, 0], embedding[i, 1]), xytext=(4, 4), textcoords="offset points", fontsize=8
+                name,
+                (embedding[i, 0], embedding[i, 1]),
+                xytext=(4, 4),
+                textcoords="offset points",
+                fontsize=8,
             )
     name_file = Path(args.save_dir) / "umap_plot.png"
     out_path = name_file
@@ -258,7 +290,10 @@ def parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--save_dir", type=str, default="saved_models/model_preCondRNN_v4.2", help="Directory containing model_*.pt checkpoints"
+        "--save_dir",
+        type=str,
+        default="saved_models/model_preCondRNN_v4.2",
+        help="Directory containing model_*.pt checkpoints",
     )
 
     parser.add_argument(
@@ -267,7 +302,7 @@ def parse_cli() -> argparse.Namespace:
         default="dataset/ZINC_with_drugs/smiles_preprocessed_scale-zscore_scaling_metrics.json",
         help="CSV file with SMILES and name",
     )
-    
+
     parser.add_argument("--n_neighbors", type=int, default=5, help="UMAP n_neighbors parameter")
     parser.add_argument("--min_dist", type=float, default=0.3, help="UMAP min_dist parameter")
 
@@ -276,7 +311,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--ref_smiles",
         type=str,
-        default="OCCN(C(=O)C(c1ccccc1)c1ccccc1)",
+        default="CN(CCO)C(=O)C(c1ccccc1)c2ccccc2",
         help="SMILES string to use as reference for distance computation",
     )
 
@@ -285,7 +320,7 @@ def parse_cli() -> argparse.Namespace:
     # ------------------------------------------------------------------
     # Load SMILES list (either built‑in examples or from file)
     # ------------------------------------------------------------------
- 
+
     return args
 
 
