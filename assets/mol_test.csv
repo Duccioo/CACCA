@@ -4,31 +4,27 @@ Indomethacin,            "CC1=C(C2=C(N1C(=O)C3=CC=C(C=C3)Cl)C=CC(=C2)OC)CC(=O)O"
 Aspirin,    "CC(=O)OC1=CC=CC=C1C(=O)O",  1
 Ibuprofen,         "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",   1
 Benzene,         "c1ccccc1",  0
-Phthalic_acid,         "O=C(O)c1ccccc1C(=O)O", 0
+Phthalic acid,         "O=C(O)c1ccccc1C(=O)O", 0
 Chrysene,         "c1ccc2c(c1)ccc3c2ccc4c3cccc4", 0
 Cyclohexane,         "C1CCCCC1",  0
 Ethanol,         "CCO", 0
 Dimethylurea,         "CNC(=O)N(C)C",  0
-Acetic acid,            "CC(=O)O",    0                  
+Acetic acid,            "CC(=O)O",    2                 
 Oestradiol,            "C[C@]12CC[C@H]3[C@H]([C@@H]1CC[C@@H]2O)CCC4=C3C=CC(=C4)O",   1
 Pyramidone,            "CC1=C(C(=O)N(N1C)C2=CC=CC=C2)N(C)C",  1
 Etoricoxib,            "CC1=NC=C(C=C1)C2=C(C=C(C=N2)Cl)C3=CC=C(C=C3)S(=O)(=O)C",0
 Nimesulide,            "CS(=O)(=O)NC1=C(C=C(C=C1)[N+](=O)[O-])OC2=CC=CC=C2",0
 Diclofenac,            "C1=CC=C(C(=C1)CC(=O)O)NC2=C(C=CC=C2Cl)Cl",0
-acido acetico,"CC(=O)O", 2
-urea, "C(=O)(N)N", 2
-polistirene, "C=CC1=CC=CC=C1", 2
+Urea, "C(=O)(N)N", 2
+Polistirene, "C=CC1=CC=CC=C1", 2
 Polietilene,"CC",2
 PVC, "C(C)Cl", 2
-2-4-5-trichlorophenoxyacetic acid, "C1=C(C(=CC(=C1Cl)Cl)Cl)OCC(=O)O", 3
-ciprofloxacina, "C1CC1N2C=C(C(=O)C3=CC(=C(C=C32)N4CCNCC4)F)C(=O)O", 0
-amoxicillina, "CC1([C@@H](N2[C@H](S1)[C@@H](C2=O)NC(=O)[C@@H](C3=CC=C(C=C3)O)N)C(=O)O)C", 0
-paracetamolo, "CC(=O)NC1=CC=C(C=C1)O", 0
-fluoxetina, "CNCCC(C1=CC=CC=C1)OC2=CC=C(C=C2)C(F)(F)F", 0
-sertralina, "CN[C@H]1CC[C@H](C2=CC=CC=C12)C3=CC(=C(C=C3)Cl)Cl", 0
-carbamazepina, "C1=CC=C2C(=C1)C=CC3=CC=CC=C3N2C(=O)N", 0
-POLYMER precrop, "c1ccc(cc1)C(c2ccccc2)C3=NCCO3", 0
-POLYMER 3, "O=C(NCC1=CC=NC=C1)CCCN2CCO2", 0
-POLYMER 0, "OCCN(C(=O)C(c1ccccc1)c1ccccc1)", 0
-polyPhOx, "CN(CCO)C(=O)C(c1ccccc1)c2ccccc2", 0
+2_4_5-trichlorophenoxyacetic, "C1=C(C(=CC(=C1Cl)Cl)Cl)OCC(=O)O", 3
+Ciprofloxacin, "C1CC1N2C=C(C(=O)C3=CC(=C(C=C32)N4CCNCC4)F)C(=O)O", 0
+Amoxicillin, "CC1([C@@H](N2[C@H](S1)[C@@H](C2=O)NC(=O)[C@@H](C3=CC=C(C=C3)O)N)C(=O)O)C", 0
+Paracetamol, "CC(=O)NC1=CC=C(C=C1)O", 0
+Fluoxetine, "CNCCC(C1=CC=CC=C1)OC2=CC=C(C=C2)C(F)(F)F", 0
+Sertraline, "CN[C@H]1CC[C@H](C2=CC=CC=C12)C3=CC(=C(C=C3)Cl)Cl", 0
+Carbamazepine, "C1=CC=C2C(=C1)C=CC3=CC=CC=C3N2C(=O)N", 0
+PolyPhOx, "CN(CCO)C(=O)C(c1ccccc1)c2ccccc2", 0
 

@@ -151,13 +151,17 @@ def smiles_dict_to_tensor(
 
 
 # Sostituisci questa funzione
-def load_smiles_from_csv(file_path: str, filter_not_in_paper: bool = False) -> pd.DataFrame:
+def load_smiles_from_csv(
+    file_path: str, 
+    filter_not_in_paper: bool = False, 
+    n_rows: int | None = None
+) -> pd.DataFrame:
     """
-    MODIFICA: Ora restituisce un DataFrame di pandas invece di un dizionario.
-    Questo permette di mantenere tutte le informazioni necessarie (MOL, SMILES, PAPER).
+    Carica un DataFrame di pandas da file CSV.
+    Se n_rows è specificato, carica solo le prime n_rows righe.
     """
     smiles_file = Path(file_path)
-    df = pd.read_csv(smiles_file, skipinitialspace=True)
+    df = pd.read_csv(smiles_file, skipinitialspace=True, nrows=n_rows)
 
     if filter_not_in_paper:
         df = df[df["PAPER"] == 1].copy()  # .copy() per evitare SettingWithCopyWarning
@@ -292,7 +296,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--save_dir",
         type=str,
-        default="saved_models/model_CVAE_v5.1",
+        default="saved_models/model_preCondRNN_v4.2",
         help="Directory containing model_*.pt checkpoints",
     )
 
