@@ -10,7 +10,6 @@ Cyclohexane,         "C1CCCCC1",  0
 Ethanol,         "CCO", 0
 Dimethylurea,         "CNC(=O)N(C)C",  0
 Acetic acid,            "CC(=O)O",    0                  
-Heteroatoms,            "C1=CC=C(C=C1)C(C(C(=O)O)N)C(C(=O)O)N",  0
 Oestradiol,            "C[C@]12CC[C@H]3[C@H]([C@@H]1CC[C@@H]2O)CCC4=C3C=CC(=C4)O",   1
 Pyramidone,            "CC1=C(C(=O)N(N1C)C2=CC=CC=C2)N(C)C",  1
 Etoricoxib,            "CC1=NC=C(C=C1)C2=C(C=C(C=N2)Cl)C3=CC=C(C=C3)S(=O)(=O)C",0
@@ -31,5 +30,5 @@ carbamazepina, "C1=CC=C2C(=C1)C=CC3=CC=CC=C3N2C(=O)N", 0
 POLYMER precrop, "c1ccc(cc1)C(c2ccccc2)C3=NCCO3", 0
 POLYMER 3, "O=C(NCC1=CC=NC=C1)CCCN2CCO2", 0
 POLYMER 0, "OCCN(C(=O)C(c1ccccc1)c1ccccc1)", 0
-MONOMER BEST, "CN(CCO)C(=O)C(c1ccccc1)c2ccccc2", 0
+polyPhOx, "CN(CCO)C(=O)C(c1ccccc1)c2ccccc2", 0
 
