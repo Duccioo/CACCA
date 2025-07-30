@@ -154,17 +154,25 @@ def smiles_dict_to_tensor(
 def load_smiles_from_csv(
     file_path: str, 
     filter_not_in_paper: bool = False, 
-    n_rows: int | None = None
+    n_rows: int | None = None,
+    random_sample: bool = False,
+    random_seed: int | None = None
 ) -> pd.DataFrame:
     """
     Carica un DataFrame di pandas da file CSV.
-    Se n_rows è specificato, carica solo le prime n_rows righe.
+    Se n_rows è specificato, carica solo le prime n_rows righe (o un campione casuale se random_sample=True).
     """
     smiles_file = Path(file_path)
-    df = pd.read_csv(smiles_file, skipinitialspace=True, nrows=n_rows)
+    df = pd.read_csv(smiles_file, skipinitialspace=True)
 
     if filter_not_in_paper:
         df = df[df["PAPER"] == 1].copy()  # .copy() per evitare SettingWithCopyWarning
+
+    if n_rows is not None:
+        if random_sample:
+            df = df.sample(n=n_rows, random_state=random_seed).reset_index(drop=True)
+        else:
+            df = df.head(n_rows).reset_index(drop=True)
 
     return df
 
