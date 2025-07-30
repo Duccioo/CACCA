@@ -3,7 +3,7 @@ save
 save_no_scaled
 save_scaled_50
 
-saved_models/esempio_modello_v2
+saved_models
 *[0-9].pt
 
 
