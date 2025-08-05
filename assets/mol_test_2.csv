@@ -1,0 +1,30 @@
+MOL,SMILES,PAPER
+Metoclopramide,            "CCN(CC)CCNC(=O)C1=CC(=C(C=C1OC)N)Cl", Known adsorbance
+Indomethacin,            "CC1=C(C2=C(N1C(=O)C3=CC=C(C=C3)Cl)C=CC(=C2)OC)CC(=O)O",  Known adsorbance
+Aspirin,    "CC(=O)OC1=CC=CC=C1C(=O)O", Known adsorbance
+Ibuprofen,         "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O", Known adsorbance
+Benzene,         "c1ccccc1", Unknown adsorbance 
+Phthalic acid,         "O=C(O)c1ccccc1C(=O)O", Unknown adsorbance
+Chrysene,         "c1ccc2c(c1)ccc3c2ccc4c3cccc4", Unknown adsorbance
+Cyclohexane,         "C1CCCCC1", Unknown adsorbance
+Ethanol,         "CCO", Unknown adsorbance
+Dimethylurea,         "CNC(=O)N(C)C", Unknown adsorbance
+Acetic acid,            "CC(=O)O", Unknown adsorbance    
+Oestradiol,            "C[C@]12CC[C@H]3[C@H]([C@@H]1CC[C@@H]2O)CCC4=C3C=CC(=C4)O", Known adsorbance
+Pyramidone,            "CC1=C(C(=O)N(N1C)C2=CC=CC=C2)N(C)C", Known adsorbance
+Etoricoxib,            "CC1=NC=C(C=C1)C2=C(C=C(C=N2)Cl)C3=CC=C(C=C3)S(=O)(=O)C", Unknown adsorbance
+Nimesulide,            "CS(=O)(=O)NC1=C(C=C(C=C1)[N+](=O)[O-])OC2=CC=CC=C2", Unknown adsorbance
+Diclofenac,            "C1=CC=C(C(=C1)CC(=O)O)NC2=C(C=CC=C2Cl)Cl", Unknown adsorbance
+Urea, "C(=O)(N)N", Unknown adsorbance
+Polistirene, "C=CC1=CC=CC=C1", Unknown adsorbance
+Polietilene,"CC", Unknown adsorbance
+PVC, "C(C)Cl", Unknown adsorbance
+2_4_5-trichlorophenoxyacetic, "C1=C(C(=CC(=C1Cl)Cl)Cl)OCC(=O)O", Unknown adsorbance
+Ciprofloxacin, "C1CC1N2C=C(C(=O)C3=CC(=C(C=C32)N4CCNCC4)F)C(=O)O", Unknown adsorbance
+Amoxicillin, "CC1([C@@H](N2[C@H](S1)[C@@H](C2=O)NC(=O)[C@@H](C3=CC=C(C=C3)O)N)C(=O)O)C", Unknown adsorbance
+Paracetamol, "CC(=O)NC1=CC=C(C=C1)O", Unknown adsorbance
+Fluoxetine, "CNCCC(C1=CC=CC=C1)OC2=CC=C(C=C2)C(F)(F)F", Unknown adsorbance
+Sertraline, "CN[C@H]1CC[C@H](C2=CC=CC=C12)C3=CC(=C(C=C3)Cl)Cl", Unknown adsorbance
+Carbamazepine, "C1=CC=C2C(=C1)C=CC3=CC=CC=C3N2C(=O)N", Unknown adsorbance
+PolyPhOx, "CN(CCO)C(=O)C(c1ccccc1)c2ccccc2", Target polymer
+
