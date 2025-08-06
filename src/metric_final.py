@@ -354,7 +354,7 @@ def run_analysis():
     # --- 1. Caricamento e Preparazione Dati ---
     print("[INFO] 1. Caricamento e preparazione dei dati...")
     try:
-        molecules_df = pd.read_csv("assets/mol_test.csv")
+        molecules_df = pd.read_csv("assets/mol_test_n3.csv")
     except FileNotFoundError:
         print("[ERRORE] File 'assets/mol_test.csv' non trovato. Assicurati che esista.")
         return
