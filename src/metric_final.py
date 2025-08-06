@@ -354,7 +354,7 @@ def run_analysis():
     # --- 1. Caricamento e Preparazione Dati ---
     print("[INFO] 1. Caricamento e preparazione dei dati...")
     try:
-        molecules_df = pd.read_csv("assets/mol_test_n3.csv")
+        molecules_df = pd.read_csv("assets/mol_test.csv")
     except FileNotFoundError:
         print("[ERRORE] File 'assets/mol_test.csv' non trovato. Assicurati che esista.")
         return
@@ -501,8 +501,8 @@ def run_analysis():
     output_dir = Path("analysis_results")
     output_dir.mkdir(exist_ok=True)
 
-    k_values_ef = [3, 5, 10]
-    k_values_pp = [1, 3, 5]
+    k_values_ef = [1, 3, 5, 10, 15]
+    k_values_pp = [1, 3, 5,10, 15]
 
     for method_name, embeddings in embeddings_collection.items():
         print(f"\n--- Valutazione per: {method_name} ---")
