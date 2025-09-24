@@ -4,6 +4,9 @@
 
 ---
 
+## 🚧 Important disclaimer! 🚧
+This repo is still in active development, so some things might change over time, including the project name! 💡✨ Just a heads up: there may be some adjustments, improvements, or modifications, but the spirit remains the same. We're excited to see how this creation evolves! 🚀😉
+
 Welcome to the CACCA 💩 project!
 
 🧪✨ This isn't just any autoencoder. It's a **Conditional Autoencoder** specifically designed to learn powerful embeddings of chemical structures (SMILES) from the ZINC dataset.
@@ -64,18 +67,6 @@ This will create a new preprocessed file, ready for the model! 📄➡️📈
 
 ### 🧠 Step 2: Train the Model
 ...
-
-
-## What's New?
-Allora il codice l'ho ritoccato abbastanza.
-
-- Prima di tutto per il modello ho tolto il biLSTM dal decoder perchè ho visto che non serve a niente e potenzialmente può essere dannoso poichè semplifica il training del modello a capire le sequenze di SMILES.
-
-- Ho aggiunto qualche ottimizzazione direttamente dal santo Karpathy, come il `torch.compile` che dovrebbe velocizzare il training del modello, o adamw optimizer che è più veloce di adam.
-
-- ho cambiato il latent size da 200 a 256, che è un valore più comune (regola del 2^n).
-
-- Il codice adesso è più organizzato e ho pulito anche qualche bug (tipo che nel modello si stava scambiando il penultimo e ultimo output del encoding del biLSTM...)
 
 ---
 
