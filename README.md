@@ -346,11 +346,6 @@ Contributions, suggestions, and feedback are super welcome! 🎉✨ Feel free to
 
 ---
 
-## 📝⚖️ License 
-
-*Specify license here if applicable* 📜✨
-
----
 
 ## 🙏🌟 Acknowledgments 
 
@@ -371,23 +366,3 @@ Got questions? 🤔 Need help? 💬 Don't hesitate to reach out! 📧
 **Happy Molecular Hacking!** 💩🧬🎉✨🔬🎯🚀💫🌟🎨🔥💪🧪🏆
 
 *Let's make some awesome molecules together!* 🤝💖🧬
-```
-
----
-
-## � Contributi
-
-Contributi, suggerimenti e feedback sono benvenuti! Sentiti libero di aprire issue o pull request.
-
----
-
-
-## 🙏 Riconoscimenti
-
-- **RDKit**: Per il calcolo delle proprietà molecolari
-- **ZINC Database**: Per il dataset di molecole
-- **PyTorch**: Framework per il deep learning
-
----
-
-Happy Molecular Hacking! 💩🧬
