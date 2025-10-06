@@ -245,7 +245,7 @@ def main(args):
             hidden_size=hidden_size,
             n_rnn_layer=n_rnn_layer,
         ).to(device)
-    # torch.compile(model)  # Compilazione JIT (opzionale)
+    torch.compile(model)  # Compilazione JIT (opzionale)
 
     # NEW ▶︎ se sono presenti >1 GPU, usa DataParallel
     # if torch.cuda.device_count() > 1:
