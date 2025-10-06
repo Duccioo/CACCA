@@ -381,11 +381,6 @@ Contributi, suggerimenti e feedback sono benvenuti! Sentiti libero di aprire iss
 
 ---
 
-## 📝 Licenza
-
-*Specifica qui la licenza se applicabile*
-
----
 
 ## 🙏 Riconoscimenti
 
